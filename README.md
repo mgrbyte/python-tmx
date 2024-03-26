@@ -28,3 +28,14 @@ for tu in tmx_file.tus:  # loop through all tus
             tu.tuvs.pop(index)  # remove tuv if not english or french
 tmx_file.export("new-tmx.tmx")  # export now bilingual tmx object into a tmx file
 ```
+
+## Development
+
+Run linting of the package with mypy:
+`mypy --config pyproject.toml -p tmx`
+
+Auto-format code with black:
+`black src`
+
+
+

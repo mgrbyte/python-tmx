@@ -1,4 +1,7 @@
 {
     "python.analysis.typeCheckingMode": "off",
-    "python.analysis.autoImportCompletions": false
+    "python.analysis.autoImportCompletions": false,
+    "mypy-type-checker.args": [
+        "\"mypy-type-checker.args\" = [\"--config-file=${workspaceFolder}/pyproject.toml\", \"-p\", \"tmx\"]"
+    ]
 }
