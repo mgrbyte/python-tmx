@@ -100,7 +100,7 @@ class prop:
 @dataclass(kw_only=True, slots=True)
 class tuv:
     """
-    Translation Unit Variant - specifies text in a given language.\n
+    Translation Unit Variant - specifies text in a given language.
     Attributes:
         - Required:
             - xmllang
@@ -115,7 +115,8 @@ class tuv:
             - creationid
             - changedate
             - changeid
-            - otmf\n"""
+            - otmf
+    """
 
     xmllang: str | None = None
     tuid: str | int | None = None
@@ -319,7 +320,8 @@ class tu:
 
 @dataclass(kw_only=True, slots=True)
 class header:
-    """File header - contains information pertaining to the whole document.\n
+    """File header - contains information pertaining to the whole document.
+
     Attributes:
         - Required:
             - creationtool
@@ -336,7 +338,8 @@ class header:
             - changedate
             - changeid
             - notes
-            - props\n
+            - props
+
     """
 
     creationtool: str | None = None
