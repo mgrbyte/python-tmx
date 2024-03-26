@@ -1,14 +1,14 @@
 """Structural TMX tag definitions."""
 
+import re
+
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from re import match
 from typing import Literal
 
-from lxml.etree import Element, ElementTree, _Element, _ElementTree
+from lxml import etree
 
-from . import XMLLANG_NAMESPACE_ATTR
+from .constants import XMLLANG_NAMESPACE_ATTR
 from .inline import run
 
 
@@ -28,9 +28,11 @@ class note:
     xmllang: str | None = None
     oencoding: str | None = None
 
-    def _make_element(self) -> _Element:
-        """Returns a <note> lxml Element with tmx-compliant attributes"""
-        elem: _Element = Element("note", attrib=self._get_tmx_attrib())
+    def _make_element(self) -> etree.etree._Element:
+        """Returns a <note> lxml etree.Element with tmx-compliant attributes."""
+        elem: etree.etree._Element = etree.Element(
+            "note", attrib=self._get_tmx_attrib()
+        )
         if self.text is None:
             raise ValueError("text cannot be None")
         else:
@@ -49,7 +51,7 @@ class note:
 
 @dataclass(kw_only=True, slots=True)
 class prop:
-    """Property - used to define the various properties of the parent element.
+    """Property - used to define the various properties of the parent etree.Element.
 
     Can also be used to define the properties of the document header.
 
@@ -70,9 +72,9 @@ class prop:
     xmllang: str | None = None
     oencoding: str | None = None
 
-    def _make_element(self) -> _Element:
-        """Returns a <prop> lxml Element"""
-        elem: _Element = Element("prop", attrib=self._get_tmx_attrib())
+    def _make_element(self) -> etree._Element:
+        """Returns a <prop> lxml etree.Element"""
+        elem: etree._Element = etree.Element("prop", attrib=self._get_tmx_attrib())
         if self.text is None:
             raise AttributeError("text cannot be None")
         else:
@@ -133,21 +135,21 @@ class tuv:
     props: list[prop] = field(default_factory=list)
     runs: list[run] = field(default_factory=list)
 
-    def _make_element(self) -> _Element:
-        """Returns a <tuv> lxml Element with tmx-compliant attributes.
+    def _make_element(self) -> etree._Element:
+        """Returns a <tuv> lxml etree.Element with tmx-compliant attributes.
 
         Includes all props and notes as lxml.etree SubElements.
         The list of runs is converted to a <seg> SubElement.
         """
-        tuv_elem: _Element = Element("tuv", attrib=self._get_tmx_attrib())
+        tuv_elem: etree._Element = etree.Element("tuv", attrib=self._get_tmx_attrib())
         for note_obj in self.notes:
             tuv_elem.append(note_obj._make_element())
         for prop_obj in self.props:
             tuv_elem.append(prop_obj._make_element())
-        seg_elem: _Element = Element("seg")
+        seg_elem: etree._Element = etree.Element("seg")
         for run_obj in self.runs:
             seg_elem.append(run_obj._element)
-        fake_run: _Element = seg_elem[0]
+        fake_run: etree._Element = seg_elem[0]
         if fake_run.tag == "fake":
             seg_elem.text = fake_run.text
             seg_elem.remove(fake_run)
@@ -194,7 +196,7 @@ class tuv:
                             value = value - utc_offset
                         tmx_attrib[attribute] = value.strftime("%Y%m%dT%H%M%SZ")
                     else:
-                        if not match(r"\d{8}T\d{6}", value):
+                        if not re.match(r"\d{8}T\d{6}", value):
                             raise ValueError(f"{attribute} format is not correct.")
                         tmx_attrib[attribute] = value
                 elif attribute == "otmf":
@@ -246,12 +248,12 @@ class tu:
     props: list[prop] = field(default_factory=list)
     tuvs: list[tuv] = field(default_factory=list)
 
-    def _make_element(self) -> _Element:
-        """Returns a <tu> lxml Element.
+    def _make_element(self) -> etree._Element:
+        """Returns a <tu> lxml etree.Element.
 
         note and prop objects are converted to children if needed.
         """
-        elem: _Element = Element("tu", attrib=self._get_tmx_attrib())
+        elem: etree._Element = etree.Element("tu", attrib=self._get_tmx_attrib())
         for _note in self.notes:
             elem.append(_note._make_element())
         for _prop in self.props:
@@ -261,7 +263,7 @@ class tu:
         return elem
 
     def _get_tmx_attrib(self) -> dict[str, str]:
-        """For use in _element function.
+        """For use in etree._Element function.
 
         Converts an object's properties to a tmx-compliant dict of attributes,
         discarding any attribute haaving a value of `None`.
@@ -295,7 +297,7 @@ class tu:
                             value = value - utc_offset
                         tmx_attrib[attribute] = value.strftime("%Y%m%dT%H%M%SZ")
                     else:
-                        if not match(r"\d{8}T\d{6}", value):
+                        if not re.match(r"\d{8}T\d{6}", value):
                             raise ValueError(f"{attribute} format is not correct.")
                         tmx_attrib[attribute] = value
                 elif attribute == "segtype" and str(value).lower() not in [
@@ -352,13 +354,13 @@ class header:
     notes: list[note] = field(default_factory=list)
     props: list[prop] = field(default_factory=list)
 
-    def _make_element(self) -> _Element:
-        """Returns a <header> lxml Element.
+    def _make_element(self) -> etree._Element:
+        """Returns a <header> lxml etree.Element.
 
         note and prop objects are converted to children if needed.
 
         """
-        elem: _Element = Element("header", attrib=self._get_tmx_attrib())
+        elem: etree._Element = etree.Element("header", attrib=self._get_tmx_attrib())
         for _note in self.notes:
             elem.append(_note._make_element())
         for _prop in self.props:
@@ -405,7 +407,7 @@ class header:
                             value = value - utc_offset
                         tmx_attrib[attribute] = value.strftime("%Y%m%dT%H%M%SZ")
                     else:
-                        if not match(r"\d{8}T\d{6}", value):
+                        if not re.match(r"\d{8}T\d{6}", value):
                             raise ValueError(f"{attribute} format is not correct.")
                         tmx_attrib[attribute] = value
                 else:
@@ -429,15 +431,16 @@ class tmx:
     Header: header | None = None
     tus: list[tu] | None = field(default_factory=list)
 
-    def export(self, dest: str | Path):
-        tmx_root: _Element = Element("tmx", attrib={"version": "1.4"})
+    def export(self, dest: etree._FileSource, pretty_print: bool = False):
+        tmx_root: etree._Element = etree.Element("tmx", attrib={"version": "1.4"})
         if self.Header:
             tmx_root.append(self.Header._make_element())
-        body_elem: _Element = Element("body")
+        body_elem: etree._Element = etree.Element("body")
         tmx_root.append(body_elem)
         if self.tus:
             for tu_obj in self.tus:
                 body_elem.append(tu_obj._make_element())
-        tmx_tree: _ElementTree = ElementTree(tmx_root)
-        with Path(dest).open("wb") as f:
-            tmx_tree.write(f, encoding="utf-8", xml_declaration=True)
+        tmx_tree: etree._ElementTree = etree.ElementTree(tmx_root)
+        tmx_tree.write(
+            dest, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print
+        )
