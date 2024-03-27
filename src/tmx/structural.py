@@ -1,15 +1,26 @@
 """Structural TMX tag definitions."""
 
-import re
-
+import io
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Literal
 
 from lxml import etree
+from dateutil.parser import parse as parse_date
 
 from .constants import XMLLANG_NAMESPACE_ATTR
 from .inline import run
+
+
+def _set_tmx_date_attrib(tmx_attrib: dict, name: str, value: str) -> None:
+    if isinstance(value, datetime):
+        utc_offset = value.utcoffset()
+        if utc_offset is not None:
+            value = value - utc_offset
+        else:
+            value = parse_date(value)
+        tmx_attrib[name] = value.strftime("%Y%m%dT%H%M%SZ")
 
 
 @dataclass(kw_only=True, slots=True)
@@ -28,11 +39,9 @@ class note:
     xmllang: str | None = None
     oencoding: str | None = None
 
-    def _make_element(self) -> etree.etree._Element:
+    def _make_element(self) -> etree._Element:
         """Returns a <note> lxml etree.Element with tmx-compliant attributes."""
-        elem: etree.etree._Element = etree.Element(
-            "note", attrib=self._get_tmx_attrib()
-        )
+        elem: etree._Element = etree.Element("note", attrib=self._get_tmx_attrib())
         if self.text is None:
             raise ValueError("text cannot be None")
         else:
@@ -191,15 +200,7 @@ class tuv:
                 if attribute == "oencoding":
                     tmx_attrib["o-encoding"] = str(value)
                 elif attribute in ["creationdate", "changedate", "lastusagedate"]:
-                    if isinstance(value, datetime):
-                        utc_offset = value.utcoffset()
-                        if utc_offset is not None:
-                            value = value - utc_offset
-                        tmx_attrib[attribute] = value.strftime("%Y%m%dT%H%M%SZ")
-                    else:
-                        if not re.match(r"\d{8}T\d{6}", value):
-                            raise ValueError(f"{attribute} format is not correct.")
-                        tmx_attrib[attribute] = value
+                    _set_tmx_date_attrib(tmx_attrib, attribute, value)
                 elif attribute == "otmf":
                     tmx_attrib["o-tmf"] = str(value)
                 else:
@@ -260,7 +261,8 @@ class tu:
         for _prop in self.props:
             elem.append(_prop._make_element())
         for _tuv in self.tuvs:
-            elem.append(_tuv._make_element())
+            if _tuv.runs:
+                elem.append(_tuv._make_element())
         return elem
 
     def _get_tmx_attrib(self) -> dict[str, str]:
@@ -292,15 +294,7 @@ class tu:
                 if attribute == "oencoding":
                     tmx_attrib["o-encoding"] = str(value)
                 elif attribute in ["creationdate", "changedate", "lastusagedate"]:
-                    if isinstance(value, datetime):
-                        utc_offset = value.utcoffset()
-                        if utc_offset is not None:
-                            value = value - utc_offset
-                        tmx_attrib[attribute] = value.strftime("%Y%m%dT%H%M%SZ")
-                    else:
-                        if not re.match(r"\d{8}T\d{6}", value):
-                            raise ValueError(f"{attribute} format is not correct.")
-                        tmx_attrib[attribute] = value
+                    _set_tmx_date_attrib(tmx_attrib, attribute, value)
                 elif attribute == "segtype" and str(value).lower() not in [
                     "block",
                     "paragraph",
@@ -404,15 +398,7 @@ class header:
                 elif attribute == "oencoding":
                     tmx_attrib["o-encoding"] = str(value)
                 elif attribute in ["creationdate", "changedate"]:
-                    if isinstance(value, datetime):
-                        utc_offset = value.utcoffset()
-                        if utc_offset is not None:
-                            value = value - utc_offset
-                        tmx_attrib[attribute] = value.strftime("%Y%m%dT%H%M%SZ")
-                    else:
-                        if not re.match(r"\d{8}T\d{6}", value):
-                            raise ValueError(f"{attribute} format is not correct.")
-                        tmx_attrib[attribute] = value
+                    _set_tmx_date_attrib(tmx_attrib, attribute, value)
                 else:
                     tmx_attrib[attribute] = value
         for required in [
@@ -433,17 +419,20 @@ class header:
 class tmx:
     Header: header | None = None
     tus: list[tu] | None = field(default_factory=list)
+    xml_version: str = "1.0"
+    encoding: str = "UTF-8"
 
-    def export(self, dest: etree._FileSource, pretty_print: bool = False):
+    def export(self, dest: str | bytes | io.BytesIO | Path, pretty_print: bool = True):
         tmx_root: etree._Element = etree.Element("tmx", attrib={"version": "1.4"})
         if self.Header:
             tmx_root.append(self.Header._make_element())
         body_elem: etree._Element = etree.Element("body")
         tmx_root.append(body_elem)
-        if self.tus:
-            for tu_obj in self.tus:
-                body_elem.append(tu_obj._make_element())
+        for tu_obj in self.tus:
+            if any(not tuv.runs for tuv in tu_obj.tuvs):
+                continue
+            body_elem.append(tu_obj._make_element())
         tmx_tree: etree._ElementTree = etree.ElementTree(tmx_root)
         tmx_tree.write(
-            dest, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print
+            dest, encoding="utf-8", pretty_print=pretty_print, xml_declaration=True
         )

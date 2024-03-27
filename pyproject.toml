@@ -19,10 +19,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["lxml"]
+dependencies = ["lxml>=5.1.0", "python-dateutil>=2.9.0"]
 
 [project.optional-dependencies]
-dev = ["black", "ruff", "pytest", "mypy", "wheel"]
+dev = ["black", "lxml-stubs>=0.5.1", "ruff", "pytest", "mypy", "requests", "wheel"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
