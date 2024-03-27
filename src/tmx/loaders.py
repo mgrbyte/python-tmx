@@ -198,7 +198,8 @@ def load_tu(tu_elem: etree._Element) -> tu:
             else:
                 setattr(tu_obj, attribute, value)
     for tuv_elem in tu_elem.findall("tuv"):
-        tu_obj.tuvs.append(load_tuv(tuv_elem))
+        if tuv_elem.getchildren():
+            tu_obj.tuvs.append(load_tuv(tuv_elem))
     return tu_obj
 
 
@@ -211,10 +212,12 @@ def load_tmx(file: Path | str) -> tmx:
     tmx_file: Path = Path(file)
     tmx_tree: etree._ElementTree = etree.parse(tmx_file, tmx_parser)
     tmx_root: etree._Element = tmx_tree.getroot()
+    tmx_obj.xml_version = tmx_tree.docinfo.xml_version
+    tmx_obj.encoding = tmx_tree.docinfo.encoding
     tmx_header_elem: etree._Element | None = tmx_root.find("header")
     if tmx_header_elem is not None:
         tmx_obj.Header = load_header(tmx_header_elem)
     for tu_elem in tmx_root.iter("tu"):
-        if tmx_obj.tus:
+        if tmx_obj.tus is not None:
             tmx_obj.tus.append(load_tu(tu_elem))
     return tmx_obj
