@@ -42,6 +42,13 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+### Testing
+
+Run all the tests with:
+```bash
+pytest
+```
+
 ### Code maintenance
 Run linting of the package with mypy:
 `mypy --config pyproject.toml -p tmx`
