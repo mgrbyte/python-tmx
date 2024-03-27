@@ -19,7 +19,7 @@ so for example, if you want to change the `creationtool` attribute of a tmx head
 tmx_file.header.creationtool = "python-tmx"
 ```
 ## Simple Usage
-The below snippet shocases how to make a multilingual tmx bilingual with very little effort
+The below snippet showcases how to make a multilingual tmx bilingual with very little effort
 ```python
 from tmx.structural import tmx
 from tmx import load_tmx
