@@ -1,17 +1,20 @@
 # Python-tmx
 A python library based on lxml to help create, edit, and export tmx files quickly.
 
-# Installation
+## Installation
 Install the latest version of the library using Pypi, note that lxml is required.
+
 ```python
 pip install -U python-tmx
 ```
+
 # How to use
 ## Basics
 A tmx file is represented as a `tmx` object, containing a `header` and a list of `tu` object. Each tu is then further divided into `tuv` objects, each having a list of `run` object representing text and the different tags available.
 Further, `header`, `tu` and `tuv` objects all have a list of `note` and `prop` objects.
 
-Every possible attribute defined by the spec is represented by an attibute of that object accesible using dot notation. so for example, if you want to change the 'creationtool' attribute of a tmx header you can simply do the following:
+Every possible attribute defined by the spec is represented by an attribute of that object accessible using dot notation,
+so for example, if you want to change the `creationtool` attribute of a tmx header you can simply do the following:
 ```python
 tmx_file.header.creationtool = "python-tmx"
 ```
@@ -31,6 +34,15 @@ tmx_file.export("new-tmx.tmx")  # export now bilingual tmx object into a tmx fil
 
 ## Development
 
+### Setup
+
+```bash
+python -m venv --upgrade-deps .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+### Code maintenance
 Run linting of the package with mypy:
 `mypy --config pyproject.toml -p tmx`
 
