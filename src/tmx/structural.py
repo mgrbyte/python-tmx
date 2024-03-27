@@ -166,7 +166,7 @@ class tuv:
         for _run in seg_elem.iter():
             if _run.tag == "fake":
                 prev_elem = _run.getprevious()
-                if prev_elem and _run.text:
+                if prev_elem is not None and _run.text:
                     if prev_elem.tail is None:
                         prev_elem.tail = _run.text
                     else:
