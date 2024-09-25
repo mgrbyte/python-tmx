@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from lxml.etree import XMLParser, _Element, parse
+from lxml.etree import _Element
 
 from .core import (
     ASSOC,
@@ -287,6 +287,3 @@ def parse_tmx(elem: _Element) -> Tmx:
     tmx = Tmx(header=header)
     tmx.tus.extend(parse_tu(child) for child in elem.iter("tu"))
     return tmx
-
-
-print(parse_tmx(parse("a.tmx", XMLParser(encoding="utf-8")).getroot()))
