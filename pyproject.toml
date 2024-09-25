@@ -27,3 +27,6 @@ dependencies = ["lxml"]
 Homepage = "https://github.com/ChonkyYoshi/python-tmx"
 Repository = "https://github.com/ChonkyYoshi/python-tmx"
 Issues = "https://github.com/ChonkyYoshi/python-tmx/issues"
+
+[tool.ruff]
+target-version = "py312"
