@@ -126,9 +126,15 @@ class Tmx:
 
 @dataclass(slots=True, kw_only=True)
 class Sub:
-    content: MutableSequence[str | Inline] = field(default_factory=list)
+    content: MutableSequence["str | Inline | Ut"] = field(default_factory=list)
     datatype: Optional[str] = None
     type: Optional[str] = None
+
+
+@dataclass(slots=True, kw_only=True)
+class Ut:
+    content: MutableSequence[str | Sub] = field(default_factory=list)
+    x: Optional[int] = None
 
 
 @dataclass(slots=True, kw_only=True)
@@ -155,7 +161,7 @@ class Ept(Inline):
 
 @dataclass(slots=True, kw_only=True)
 class Hi(Inline):
-    content: MutableSequence[str | Inline] = field(default_factory=list)
+    content: MutableSequence[str | Inline | Ut] = field(default_factory=list)
     x: Optional[int] = None
     type: Optional[str] = None
 
@@ -166,9 +172,3 @@ class It(Inline):
     pos: POS
     x: Optional[int] = None
     type: Optional[str] = None
-
-
-@dataclass(slots=True, kw_only=True)
-class Ut(Inline):
-    content: MutableSequence[str | Sub] = field(default_factory=list)
-    x: Optional[int] = None

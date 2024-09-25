@@ -1,26 +1,31 @@
+from lxml.etree import _Element
+
+
 class MissingAttributeError(Exception):
-    def __init__(self, attribute: str, element: str) -> None:
-        super().__init__(f"Element {element} is missing attribute {attribute}")
+    def __init__(self, attribute: str, element: _Element) -> None:
+        super().__init__(f"Element {element.tag} is missing attribute {attribute}")
 
 
 class MissingTextError(Exception):
-    def __init__(self, element: str) -> None:
-        super().__init__(f"Element <{element}> is missing text data")
+    def __init__(self, element: _Element) -> None:
+        super().__init__(f"Element <{element.tag}> is missing text data")
 
 
 class MissingChildrenError(Exception):
-    def __init__(self, element: str) -> None:
-        super().__init__(f"Element <{element}> is missing children")
+    def __init__(self, element: _Element) -> None:
+        super().__init__(f"Element <{element.tag}> is missing children")
 
 
 class ExtraTextError(Exception):
-    def __init__(self, element: str) -> None:
-        super().__init__(f"Element <{element}> has extra text data")
+    def __init__(self, element: _Element) -> None:
+        super().__init__(
+            f"Element <{element.tag}> has extra text data:\n'{element.text}'"
+        )
 
 
 class ExtraChildrenError(Exception):
-    def __init__(self, element: str) -> None:
-        super().__init__(f"Element <{element}> has extra children")
+    def __init__(self, element: _Element, extra: _Element) -> None:
+        super().__init__(f"Found extra <{extra.tag}> tag: inside <{element.tag}>\n")
 
 
 class UnknownTagError(Exception):
