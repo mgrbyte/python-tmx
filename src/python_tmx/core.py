@@ -3,6 +3,10 @@ from datetime import datetime
 from enum import Enum
 from typing import MutableSequence, Optional, final
 
+from pydantic import BaseModel, Field
+
+__XML__ = "{http://www.w3.org/XML/1998/namespace}"
+
 
 @final
 class SEGTYPE(Enum):
@@ -29,11 +33,10 @@ class Inline:
     pass
 
 
-@dataclass(slots=True, kw_only=True)
-class Note:
+class Note(BaseModel):
     text: str
-    lang: Optional[str] = None
-    encoding: Optional[str] = None
+    lang: Optional[str] = Field(default=None, serialization_alias=f"{__XML__}lang")
+    encoding: Optional[str] = Field(default=None, serialization_alias=f"{__XML__}lang")
 
 
 @dataclass(slots=True, kw_only=True)
