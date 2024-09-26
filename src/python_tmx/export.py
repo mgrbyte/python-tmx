@@ -18,28 +18,29 @@ def export_prop(prop: Prop) -> _Element:
 
 def export_ude(ude: Ude) -> _Element:
     elem = Element("ude", ude.model_dump(by_alias=True, exclude_none=True))
-    elem.extend(
-        Element("map", map_.model_dump(by_alias=True, exclude_none=True))
-        for map_ in ude.maps
-    )
+    if ude.maps:
+        elem.extend(
+            tuple(
+                Element("map", map_.model_dump(by_alias=True, exclude_none=True))
+                for map_ in ude.maps
+            )
+        )
     return elem
 
 
 def export_header(header: Header) -> _Element:
     header_elem = Element("header", header.model_dump(by_alias=True, exclude_none=True))
-    if len(header.notes):
-        header_elem.extend(export_note(note) for note in header.notes)
-    if len(header.props):
-        header_elem.extend(export_prop(prop) for prop in header.props)
-    if len(header.udes):
-        header_elem.extend(export_ude(ude) for ude in header.udes)
+    if header.notes:
+        header_elem.extend(tuple(export_note(note) for note in header.notes))
+    if header.props:
+        header_elem.extend(tuple(export_prop(prop) for prop in header.props))
+    if header.udes:
+        header_elem.extend(tuple(export_ude(ude) for ude in header.udes))
     return header_elem
 
 
 def export_inline(obj: Ut | Sub | Inline) -> _Element:
-    elem = Element(
-        obj.__class__.__name__.lower(), obj.model_dump_json(exclude_none=True)
-    )
+    elem = Element(obj.__class__.__name__.lower(), obj.model_dump(exclude_none=True))
     elem.text, elem.tail = "", ""
     parent = None
     for item in obj.content:
@@ -61,9 +62,9 @@ def export_inline(obj: Ut | Sub | Inline) -> _Element:
 def export_tuv(tuv: Tuv) -> _Element:
     tuv_elem = Element("tuv", tuv.model_dump(by_alias=True, exclude_none=True))
     if len(tuv.notes):
-        tuv_elem.extend(export_note(note) for note in tuv.notes)
+        tuv_elem.extend(tuple(export_note(note) for note in tuv.notes))
     if len(tuv.props):
-        tuv_elem.extend(export_prop(prop) for prop in tuv.props)
+        tuv_elem.extend(tuple(export_prop(prop) for prop in tuv.props))
     if not len(tuv.segment):
         raise MissingSegmentError()
     seg_elem = SubElement(tuv_elem, "seg")
@@ -88,11 +89,11 @@ def export_tuv(tuv: Tuv) -> _Element:
 def export_tu(tu: Tu) -> _Element:
     tu_elem = Element("tu", tu.model_dump(exclude_none=True, by_alias=True))
     if len(tu.notes):
-        tu_elem.extend(export_note(note) for note in tu.notes)
+        tu_elem.extend(tuple(export_note(note) for note in tu.notes))
     if len(tu.props):
-        tu_elem.extend(export_prop(prop) for prop in tu.props)
+        tu_elem.extend(tuple(export_prop(prop) for prop in tu.props))
     if len(tu.tuvs):
-        tu_elem.extend(export_tuv(tuv) for tuv in tu.tuvs)
+        tu_elem.extend(tuple(export_tuv(tuv) for tuv in tu.tuvs))
     return tu_elem
 
 
@@ -100,5 +101,5 @@ def export_tmx(tmx: Tmx) -> _Element:
     tmx_elem = Element("tmx", version="1.4")
     tmx_elem.append(export_header(tmx.header))
     body_elem = SubElement(tmx_elem, "body")
-    body_elem.extend(export_tu(tu) for tu in tmx.tus)
+    body_elem.extend(tuple(export_tu(tu) for tu in tmx.tus))
     return tmx_elem

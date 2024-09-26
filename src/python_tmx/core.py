@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import MutableSequence, Optional, final
+from typing import Any, MutableSequence, Optional, final
 
 from pydantic import (
     BaseModel,
@@ -53,7 +53,7 @@ class TmxModel(BaseModel):
 
 
 class Inline(TmxModel):
-    pass
+    content: Any
 
 
 class Note(TmxModel):
@@ -86,7 +86,7 @@ class Ude(TmxModel):
     def check_base_needed(
         cls, base: Optional[str], info: SerializationInfo
     ) -> Optional[str]:
-        maps: MutableSequence[Map] = info.context
+        maps: Optional[MutableSequence[Map]] = info.context
         if maps and len(maps) and not base:
             for map in maps:
                 if map.code:

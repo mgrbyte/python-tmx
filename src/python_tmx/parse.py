@@ -39,7 +39,7 @@ __XML__ = "{http://www.w3.org/XML/1998/namespace}"
 
 def parse_note(elem: _Element) -> Note:
     if not elem.text:
-        raise MissingTextError(elem)
+        raise MissingTextError(elem.tag)
     return Note(
         text=elem.text,
         lang=elem.get(f"{__XML__}lang"),
@@ -49,9 +49,9 @@ def parse_note(elem: _Element) -> Note:
 
 def parse_prop(elem: _Element) -> Prop:
     if not elem.text:
-        raise MissingTextError(elem)
+        raise MissingTextError(elem.tag)
     if not (type := elem.get("type")):
-        raise MissingAttributeError("type", elem)
+        raise MissingAttributeError("type", elem.tag)
     return Prop(
         text=elem.text,
         type=type,
@@ -62,11 +62,11 @@ def parse_prop(elem: _Element) -> Prop:
 
 def parse_map(elem: _Element) -> Map:
     if not (unicode := elem.get("unicode")):
-        raise MissingAttributeError("unicode", elem)
+        raise MissingAttributeError("unicode", elem.tag)
     if elem.text:
-        raise ExtraTextError(elem)
+        raise ExtraTextError(elem.tag, elem.text)
     if len(elem):
-        raise ExtraChildrenError(elem, extra=elem[0])
+        raise ExtraChildrenError(elem.tag, elem[0].tag)
     return Map(
         unicode=unicode,
         code=elem.get("code"),
@@ -77,11 +77,11 @@ def parse_map(elem: _Element) -> Map:
 
 def parse_ude(elem: _Element) -> Ude:
     if not (name := elem.get("name")):
-        raise MissingAttributeError("name", elem)
+        raise MissingAttributeError("name", elem.tag)
     if elem.text:
-        raise ExtraTextError(elem)
+        raise ExtraTextError(elem.tag, elem.text)
     if not len(elem):
-        raise MissingChildrenError(elem)
+        raise MissingChildrenError(elem.tag)
     return Ude(
         name=name,
         base=elem.get("base"),
@@ -91,19 +91,19 @@ def parse_ude(elem: _Element) -> Ude:
 
 def parse_header(elem: _Element) -> Header:
     if not (creationtool := elem.get("creationtool")):
-        raise MissingAttributeError("creationtool", elem)
+        raise MissingAttributeError("creationtool", elem.tag)
     if not (creationtoolversion := elem.get("creationtoolversion")):
-        raise MissingAttributeError("creationtoolversion", elem)
+        raise MissingAttributeError("creationtoolversion", elem.tag)
     if not (segtype := elem.get("segtype")):
-        raise MissingAttributeError("segtype", elem)
+        raise MissingAttributeError("segtype", elem.tag)
     if not (tmf := elem.get("o-tmf")):
-        raise MissingAttributeError("o-tmf", elem)
+        raise MissingAttributeError("o-tmf", elem.tag)
     if not (adminlang := elem.get("adminlang")):
-        raise MissingAttributeError("adminlang", elem)
+        raise MissingAttributeError("adminlang", elem.tag)
     if not (srclang := elem.get("srclang")):
-        raise MissingAttributeError("srclang", elem)
+        raise MissingAttributeError("srclang", elem.tag)
     if not (datatype := elem.get("datatype")):
-        raise MissingAttributeError("datatype", elem)
+        raise MissingAttributeError("datatype", elem.tag)
     header = Header(
         creationtool=creationtool,
         creationtoolversion=creationtoolversion,
@@ -129,7 +129,7 @@ def parse_header(elem: _Element) -> Header:
 def parse_inline(elem: _Element) -> Inline | Sub | Ut:
     def parse_ph(elem: _Element) -> Ph:
         if not (x := elem.get("x")):
-            raise MissingAttributeError("x", elem)
+            raise MissingAttributeError("x", elem.tag)
         ph = Ph(
             x=int(x),
             type=elem.get("type"),
@@ -140,7 +140,7 @@ def parse_inline(elem: _Element) -> Inline | Sub | Ut:
 
     def parse_bpt(elem: _Element) -> Bpt:
         if not (i := elem.get("i")):
-            raise MissingAttributeError("i", elem)
+            raise MissingAttributeError("i", elem.tag)
         x = elem.get("x")
         bpt = Bpt(
             i=int(i),
@@ -151,13 +151,13 @@ def parse_inline(elem: _Element) -> Inline | Sub | Ut:
 
     def parse_ept(elem: _Element) -> Ept:
         if not (i := elem.get("i")):
-            raise MissingAttributeError("i", elem)
+            raise MissingAttributeError("i", elem.tag)
         ept = Ept(i=int(i))
         return ept
 
     def parse_hi(elem: _Element) -> Hi:
         if not (x := elem.get("x")):
-            raise MissingAttributeError("x", elem)
+            raise MissingAttributeError("x", elem.tag)
         hi = Hi(
             x=int(x),
             type=elem.get("type"),
@@ -166,7 +166,7 @@ def parse_inline(elem: _Element) -> Inline | Sub | Ut:
 
     def parse_it(elem: _Element) -> It:
         if not (pos := elem.get("pos")):
-            raise MissingAttributeError("pos", elem)
+            raise MissingAttributeError("pos", elem.tag)
         x = elem.get("x")
         it = It(
             pos=POS(pos),
@@ -219,7 +219,7 @@ def parse_inline(elem: _Element) -> Inline | Sub | Ut:
 
 def parse_tuv(elem: _Element) -> Tuv:
     if not (lang := elem.get(f"{__XML__}lang")):
-        raise MissingAttributeError("lang", elem)
+        raise MissingAttributeError("lang", elem.tag)
     tuv = Tuv(
         lang=lang,
         encoding=elem.get("o-encoding"),
