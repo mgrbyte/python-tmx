@@ -1,8 +1,7 @@
 from lxml.etree import Element, SubElement, _Element
 
-from python_tmx.errors import MissingSegmentError
-
-from .core import Header, Inline, Map, Note, Prop, Sub, Tmx, Tu, Tuv, Ude, Ut
+from .core import Header, Inline, Note, Prop, Sub, Tmx, Tu, Tuv, Ude, Ut
+from .errors import MissingSegmentError
 
 
 def export_note(note: Note) -> _Element:
@@ -18,13 +17,11 @@ def export_prop(prop: Prop) -> _Element:
 
 
 def export_ude(ude: Ude) -> _Element:
-    def export_map(map_: Map) -> _Element:
-        elem = Element("map", map_.model_dump(by_alias=True, exclude_none=True))
-        elem.text = map_.text
-        return elem
-
     elem = Element("ude", ude.model_dump(by_alias=True, exclude_none=True))
-    elem.extend(export_map(map_) for map_ in ude.maps)
+    elem.extend(
+        Element("map", map_.model_dump(by_alias=True, exclude_none=True))
+        for map_ in ude.maps
+    )
     return elem
 
 
@@ -58,6 +55,7 @@ def export_inline(obj: Ut | Sub | Inline) -> _Element:
             raise TypeError(
                 f"'{type(item).__call__.__name__}' objects are not allowed as children of '{obj.__class__.__name__}' objects"
             )
+    return elem
 
 
 def export_tuv(tuv: Tuv) -> _Element:
@@ -84,6 +82,7 @@ def export_tuv(tuv: Tuv) -> _Element:
             raise TypeError(
                 f"'{type(item).__call__.__name__}' objects are not allowed as children of Segment objects"
             )
+    return tuv_elem
 
 
 def export_tu(tu: Tu) -> _Element:
@@ -94,6 +93,7 @@ def export_tu(tu: Tu) -> _Element:
         tu_elem.extend(export_prop(prop) for prop in tu.props)
     if len(tu.tuvs):
         tu_elem.extend(export_tuv(tuv) for tuv in tu.tuvs)
+    return tu_elem
 
 
 def export_tmx(tmx: Tmx) -> _Element:

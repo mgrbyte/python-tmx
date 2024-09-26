@@ -85,7 +85,7 @@ def parse_ude(elem: _Element) -> Ude:
     return Ude(
         name=name,
         base=elem.get("base"),
-        maps=[parse_map(child) for child in elem.iter("map")],
+        maps=[parse_map(child) for child in elem.iterchildren("map")],
     )
 
 
@@ -115,9 +115,9 @@ def parse_header(elem: _Element) -> Header:
         encoding=elem.get("o-encoding"),
         creationid=elem.get("creationid"),
         changeid=elem.get("changeid"),
-        notes=[parse_note(child) for child in elem.iter("note")],
-        props=[parse_prop(child) for child in elem.iter("prop")],
-        udes=[parse_ude(child) for child in elem.iter("ude")],
+        notes=[parse_note(child) for child in elem.iterchildren("note")],
+        props=[parse_prop(child) for child in elem.iterchildren("prop")],
+        udes=[parse_ude(child) for child in elem.iterchildren("ude")],
     )
     if creationdate := elem.get("creationdate"):
         header.creationdate = datetime.strptime(creationdate, r"%Y%m%dT%H%M%SZ")
@@ -229,8 +229,8 @@ def parse_tuv(elem: _Element) -> Tuv:
         creationid=elem.get("creationid"),
         changeid=elem.get("changeid"),
         tmf=elem.get("o-tmf"),
-        notes=[parse_note(child) for child in elem.iter("note")],
-        props=[parse_prop(child) for child in elem.iter("prop")],
+        notes=[parse_note(child) for child in elem.iterchildren("note")],
+        props=[parse_prop(child) for child in elem.iterchildren("prop")],
     )
     seg = elem.find("seg")
     if seg is None:
@@ -264,9 +264,9 @@ def parse_tu(elem: _Element) -> Tu:
         changeid=elem.get("changeid"),
         tmf=elem.get("o-tmf"),
         srclang=elem.get("srclang"),
-        notes=[parse_note(child) for child in elem.iter("note")],
-        props=[parse_prop(child) for child in elem.iter("prop")],
-        tuvs=[parse_tuv(child) for child in elem.iter("tuv")],
+        notes=[parse_note(child) for child in elem.iterchildren("note")],
+        props=[parse_prop(child) for child in elem.iterchildren("prop")],
+        tuvs=[parse_tuv(child) for child in elem.iterchildren("tuv")],
     )
     if creationdate := elem.get("creationdate"):
         tu.creationdate = datetime.strptime(creationdate, r"%Y%m%dT%H%M%SZ")
@@ -284,6 +284,6 @@ def parse_tu(elem: _Element) -> Tu:
 def parse_tmx(elem: _Element) -> Tmx:
     if (head_elem := elem.find("header")) is not None:
         header = parse_header(head_elem)
-    tmx = Tmx(header=header)
-    tmx.tus.extend(parse_tu(child) for child in elem.iter("tu"))
+    tus = [parse_tu(child) for child in elem.iter("tu")]
+    tmx = Tmx(header=header, tus=tus)
     return tmx
