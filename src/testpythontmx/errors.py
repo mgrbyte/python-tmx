@@ -1,3 +1,15 @@
+__all__ = [
+    "MissingAttributeError",
+    "MissingChildrenError",
+    "MissingSegmentError",
+    "MissingTextError",
+    "ExtraChildrenError",
+    "ExtraTextError",
+    "UnknownTagError",
+    "IncorrectRootError",
+]
+
+
 class MissingAttributeError(Exception):
     def __init__(self, attribute: str, element: str) -> None:
         super().__init__(f"Element {element} is missing attribute {attribute}")

@@ -9,6 +9,12 @@ from .errors import IncorrectRootError
 from .export import tmx_to_element
 from .parse import parse_tmx
 
+__all__ = [
+    "load_tmx",
+    "to_tmx_file",
+    "to_json",
+]
+
 
 def load_tmx(file: str | bytes | PathLike) -> Tmx:
     root: _Element = parse(file).getroot()
@@ -17,7 +23,9 @@ def load_tmx(file: str | bytes | PathLike) -> Tmx:
     return parse_tmx(root)
 
 
-def to_file(tmx: Tmx, file: str | bytes | PathLike, encoding: str = "UTF-8") -> None:
+def to_tmx_file(
+    tmx: Tmx, file: str | bytes | PathLike, encoding: str = "UTF-8"
+) -> None:
     root = tmx_to_element(tmx)
     ElementTree(root).write(
         file,

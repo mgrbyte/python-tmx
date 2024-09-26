@@ -14,6 +14,28 @@ from pydantic import (
 
 from .errors import MissingAttributeError
 
+__all__ = [
+    "SEGTYPE",
+    "POS",
+    "ASSOC",
+    "TmxElement",
+    "InlineElement",
+    "Note",
+    "Prop",
+    "Ude",
+    "Map",
+    "Header",
+    "Tmx",
+    "Tu",
+    "Tuv",
+    "Ph",
+    "Bpt",
+    "Ept",
+    "Hi",
+    "It",
+    "Ut",
+    "Sub",
+]
 __XML__ = "{http://www.w3.org/XML/1998/namespace}"
 
 

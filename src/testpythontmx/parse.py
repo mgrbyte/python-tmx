@@ -35,6 +35,18 @@ from .errors import (
     UnknownTagError,
 )
 
+__all__ = [
+    "parse_note",
+    "parse_prop",
+    "parse_ude",
+    "parse_map",
+    "parse_header",
+    "parse_inline",
+    "parse_tmx",
+    "parse_tu",
+    "parse_tuv",
+]
+
 __XML__ = "{http://www.w3.org/XML/1998/namespace}"
 
 

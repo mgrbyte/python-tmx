@@ -1,7 +1,18 @@
 from lxml.etree import Element, SubElement, _Element
 
 from .core import Header, InlineElement, Note, Prop, Sub, Tmx, Tu, Tuv, Ude, Ut
-from .errors import MissingSegmentError
+from .io import MissingSegmentError
+
+__all__ = [
+    "note_to_element",
+    "prop_to_element",
+    "ude_to_element",
+    "header_to_element",
+    "inline_to_element",
+    "tuv_to_element",
+    "tu_to_element",
+    "tmx_to_element",
+]
 
 
 def note_to_element(note: Note) -> _Element:
