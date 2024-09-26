@@ -38,7 +38,7 @@ class ASSOC(Enum):
     B = "b"
 
 
-class TmxModel(BaseModel):
+class TmxElement(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     @field_serializer("x", "i", "usagecount", check_fields=False)
@@ -52,31 +52,31 @@ class TmxModel(BaseModel):
         return date.strftime(r"%Y%m%dT%H%M%SZ")
 
 
-class Inline(TmxModel):
+class InlineElement(TmxElement):
     content: Any
 
 
-class Note(TmxModel):
+class Note(TmxElement):
     text: str = Field(exclude=True)
     lang: Optional[str] = Field(default=None, serialization_alias=f"{__XML__}lang")
     encoding: Optional[str] = Field(default=None, serialization_alias="o-encoding")
 
 
-class Prop(TmxModel):
+class Prop(TmxElement):
     text: str = Field(exclude=True)
     type: str
     lang: Optional[str] = Field(default=None, serialization_alias=f"{__XML__}lang")
     encoding: Optional[str] = Field(default=None, serialization_alias="o-encoding")
 
 
-class Map(TmxModel):
+class Map(TmxElement):
     unicode: str
     code: Optional[str] = None
     ent: Optional[str] = None
     subst: Optional[str] = None
 
 
-class Ude(TmxModel):
+class Ude(TmxElement):
     maps: Optional[MutableSequence[Map]] = Field(default_factory=list, exclude=True)
     name: str
     base: Optional[str] = None
@@ -94,7 +94,7 @@ class Ude(TmxModel):
         return base
 
 
-class Header(TmxModel):
+class Header(TmxElement):
     creationtool: str
     creationtoolversion: str
     segtype: SEGTYPE
@@ -112,7 +112,7 @@ class Header(TmxModel):
     udes: MutableSequence[Ude] = Field(default_factory=list, exclude=True)
 
 
-class Tuv(TmxModel):
+class Tuv(TmxElement):
     lang: str = Field(serialization_alias=f"{__XML__}lang")
     encoding: Optional[str] = Field(default=None, serialization_alias="o-encoding")
     datatype: Optional[str] = None
@@ -127,10 +127,12 @@ class Tuv(TmxModel):
     tmf: Optional[str] = Field(default=None, serialization_alias="o-tmf")
     props: MutableSequence[Prop] = Field(default_factory=list, exclude=True)
     notes: MutableSequence[Note] = Field(default_factory=list, exclude=True)
-    segment: MutableSequence[str | Inline] = Field(default_factory=list, exclude=True)
+    segment: MutableSequence[str | InlineElement] = Field(
+        default_factory=list, exclude=True
+    )
 
 
-class Tu(TmxModel):
+class Tu(TmxElement):
     tuid: Optional[str] = None
     encoding: Optional[str] = Field(default=None, serialization_alias="o-encoding")
     datatype: Optional[str] = None
@@ -150,52 +152,52 @@ class Tu(TmxModel):
     tuvs: MutableSequence[Tuv] = Field(default_factory=list, exclude=True)
 
 
-class Tmx(TmxModel):
+class Tmx(TmxElement):
     header: Header = Field(exclude=True)
     tus: MutableSequence[Tu] = Field(exclude=True)
 
 
-class Sub(TmxModel):
-    content: MutableSequence[str | Inline | Ut] = Field(
+class Sub(TmxElement):
+    content: MutableSequence[str | InlineElement | Ut] = Field(
         default_factory=list, exclude=True
     )
     datatype: Optional[str] = None
     type: Optional[str] = None
 
 
-class Ut(TmxModel):
+class Ut(TmxElement):
     content: MutableSequence[str | Sub] = Field(default_factory=list, exclude=True)
     x: Optional[int] = None
 
 
-class Ph(Inline):
+class Ph(InlineElement):
     content: MutableSequence[str | Sub] = Field(default_factory=list, exclude=True)
     x: Optional[int] = None
     type: Optional[str] = None
     assoc: Optional[ASSOC] = None
 
 
-class Bpt(Inline):
+class Bpt(InlineElement):
     content: MutableSequence[str | Sub] = Field(default_factory=list, exclude=True)
     i: int
     x: Optional[int] = None
     type: Optional[str] = None
 
 
-class Ept(Inline):
+class Ept(InlineElement):
     content: MutableSequence[str | Sub] = Field(default_factory=list, exclude=True)
     i: int
 
 
-class Hi(Inline):
-    content: MutableSequence[str | Inline | Ut] = Field(
+class Hi(InlineElement):
+    content: MutableSequence[str | InlineElement | Ut] = Field(
         default_factory=list, exclude=True
     )
     x: Optional[int] = None
     type: Optional[str] = None
 
 
-class It(Inline):
+class It(InlineElement):
     content: MutableSequence[str | Sub] = Field(default_factory=list, exclude=True)
     pos: POS
     x: Optional[int] = None

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from re import match
 
 from lxml.etree import _Element
 
@@ -12,7 +13,7 @@ from .core import (
     Ept,
     Header,
     Hi,
-    Inline,
+    InlineElement,
     It,
     Map,
     Note,
@@ -63,7 +64,7 @@ def parse_prop(elem: _Element) -> Prop:
 def parse_map(elem: _Element) -> Map:
     if not (unicode := elem.get("unicode")):
         raise MissingAttributeError("unicode", elem.tag)
-    if elem.text:
+    if elem.text and not match(r"\s*", elem.text):
         raise ExtraTextError(elem.tag, elem.text)
     if len(elem):
         raise ExtraChildrenError(elem.tag, elem[0].tag)
@@ -78,7 +79,7 @@ def parse_map(elem: _Element) -> Map:
 def parse_ude(elem: _Element) -> Ude:
     if not (name := elem.get("name")):
         raise MissingAttributeError("name", elem.tag)
-    if elem.text:
+    if elem.text and not match(r"\s*", elem.text):
         raise ExtraTextError(elem.tag, elem.text)
     if not len(elem):
         raise MissingChildrenError(elem.tag)
@@ -126,7 +127,7 @@ def parse_header(elem: _Element) -> Header:
     return header
 
 
-def parse_inline(elem: _Element) -> Inline | Sub | Ut:
+def parse_inline(elem: _Element) -> InlineElement | Sub | Ut:
     def parse_ph(elem: _Element) -> Ph:
         if not (x := elem.get("x")):
             raise MissingAttributeError("x", elem.tag)
@@ -189,7 +190,7 @@ def parse_inline(elem: _Element) -> Inline | Sub | Ut:
         )
         return ut
 
-    inline: Inline | Sub | Ut
+    inline: InlineElement | Sub | Ut
     match elem.tag:
         case "ph":
             inline = parse_ph(elem)
@@ -207,7 +208,7 @@ def parse_inline(elem: _Element) -> Inline | Sub | Ut:
             inline = parse_ut(elem)
         case _:
             raise UnknownTagError(elem.tag)
-    if elem.text:
+    if elem.text and not match(r"\s*", elem.text):
         inline.content.append(elem.text)
     if len(elem):
         for child in elem:

@@ -31,3 +31,8 @@ class UnknownTagError(Exception):
 class MissingSegmentError(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__("Tuv object cannot have an empty segment", *args)
+
+
+class IncorrectRootError(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__("Root tag is not <tmx>", *args)
