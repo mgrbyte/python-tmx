@@ -5,6 +5,8 @@ from typing import Literal, MutableSequence, overload
 from lxml.etree import Element, _Element
 from typing_extensions import deprecated
 
+from .utils import add_attrs
+
 _EmptyElem_ = Element("empty")
 
 
@@ -61,7 +63,7 @@ class Bpt:
     def __init__(
         self,
         *,
-        content: str,
+        content: MutableSequence[str | Sub],
         i: int,
         x: int | None = None,
         type: str | None = None,
@@ -98,9 +100,36 @@ class Bpt:
             except (TypeError, ValueError):
                 pass
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("bpt")
+        add_attrs(
+            elem,
+            {"i": self.i, "x": self.x, "type": self.type},
+            ("i",),
+            force_str,
+        )
+        if isinstance(self.content, str):
+            elem.text = self.content
+        else:
+            for item in self.content:
+                if isinstance(item, str):
+                    if len(elem):
+                        elem[-1].tail += item  # type:ignore
+                    else:
+                        elem.tail += item  # type:ignore
+                elif isinstance(item, Sub):
+                    elem.append(item.to_element())
+                    elem[-1].tail = ""
+                else:
+                    raise TypeError(
+                        f"'{type(item)}' Elements are not allowed inside a Bpt Element"
+                    )
+        elem.append(elem)
+        return elem
+
 
 class Ept:
-    content: str
+    content: MutableSequence[str | Sub]
     i: int | None
 
     @overload
@@ -109,7 +138,7 @@ class Ept:
     def __init__(
         self,
         *,
-        content: str,
+        content: MutableSequence[str | Sub],
         i: int | None = None,
     ) -> None: ...
     @overload
@@ -133,9 +162,36 @@ class Ept:
             except (TypeError, ValueError):
                 pass
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("ept")
+        add_attrs(
+            elem,
+            {"i": self.i},
+            tuple(),
+            force_str,
+        )
+        if isinstance(self.content, str):
+            elem.text = self.content
+        else:
+            for item in self.content:
+                if isinstance(item, str):
+                    if len(elem):
+                        elem[-1].tail += item  # type:ignore
+                    else:
+                        elem.tail += item  # type:ignore
+                elif isinstance(item, Sub):
+                    elem.append(item.to_element())
+                    elem[-1].tail = ""
+                else:
+                    raise TypeError(
+                        f"'{type(item)}' Elements are not allowed inside a Ept Element"
+                    )
+        elem.append(elem)
+        return elem
+
 
 class Hi:
-    content: str
+    content: MutableSequence[str | Bpt | Ept | It | Ph | Hi]
     x: int | None
     type: str | None
 
@@ -145,7 +201,7 @@ class Hi:
     def __init__(
         self,
         *,
-        content: str,
+        content: MutableSequence[str | Bpt | Ept | It | Ph | Hi],
         x: int | None = None,
         type: str | None = None,
     ) -> None: ...
@@ -173,9 +229,36 @@ class Hi:
             except (TypeError, ValueError):
                 pass
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("hi")
+        add_attrs(
+            elem,
+            {"x": self.x, "type": self.type},
+            tuple(),
+            force_str,
+        )
+        if isinstance(self.content, str):
+            elem.text = self.content
+        else:
+            for item in self.content:
+                if isinstance(item, str):
+                    if len(elem):
+                        elem[-1].tail += item  # type:ignore
+                    else:
+                        elem.tail += item  # type:ignore
+                elif isinstance(item, (Bpt, Ept, Hi, It, Ph)):
+                    elem.append(item.to_element())
+                    elem[-1].tail = ""
+                else:
+                    raise TypeError(
+                        f"'{type(item)}' Elements are not allowed inside a Hi Element"
+                    )
+        elem.append(elem)
+        return elem
+
 
 class It:
-    content: str
+    content: MutableSequence[str | Sub]
     pos: Literal["begin", "end"]
     x: int | None
     type: str | None
@@ -186,7 +269,7 @@ class It:
     def __init__(
         self,
         *,
-        content: str,
+        content: MutableSequence[str | Sub],
         pos: Literal["begin", "end"],
         x: int | None = None,
         type: str | None = None,
@@ -218,9 +301,36 @@ class It:
             except (TypeError, ValueError):
                 pass
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("it")
+        add_attrs(
+            elem,
+            {"pos": self.pos, "x": self.x, "type": self.type},
+            ("pos",),
+            force_str,
+        )
+        if isinstance(self.content, str):
+            elem.text = self.content
+        else:
+            for item in self.content:
+                if isinstance(item, str):
+                    if len(elem):
+                        elem[-1].tail += item  # type:ignore
+                    else:
+                        elem.tail += item  # type:ignore
+                elif isinstance(item, Sub):
+                    elem.append(item.to_element())
+                    elem[-1].tail = ""
+                else:
+                    raise TypeError(
+                        f"'{type(item)}' Elements are not allowed inside a It Element"
+                    )
+        elem.append(elem)
+        return elem
+
 
 class Ph:
-    content: str
+    content: MutableSequence[str | Sub]
     x: int | None
     type: str | None
     assoc: Literal["p", "f", "b"] | None
@@ -231,7 +341,7 @@ class Ph:
     def __init__(
         self,
         *,
-        content: str,
+        content: MutableSequence[str | Sub],
         x: int | None = None,
         type: str | None = None,
         assoc: Literal["p", "f", "b"] | None = None,
@@ -263,6 +373,33 @@ class Ph:
             except (TypeError, ValueError):
                 pass
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("ph")
+        add_attrs(
+            elem,
+            {"x": self.x, "type": self.type, "assoc": self.assoc},
+            tuple(),
+            force_str,
+        )
+        if isinstance(self.content, str):
+            elem.text = self.content
+        else:
+            for item in self.content:
+                if isinstance(item, str):
+                    if len(elem):
+                        elem[-1].tail += item  # type:ignore
+                    else:
+                        elem.tail += item  # type:ignore
+                elif isinstance(item, Sub):
+                    elem.append(item.to_element())
+                    elem[-1].tail = ""
+                else:
+                    raise TypeError(
+                        f"'{type(item)}' Elements are not allowed inside a Ph Element"
+                    )
+        elem.append(elem)
+        return elem
+
 
 class Sub:
     content: MutableSequence[str | Bpt | Ept | It | Ph | Hi] | str
@@ -275,7 +412,7 @@ class Sub:
     def __init__(
         self,
         *,
-        content: str,
+        content: MutableSequence[str | Sub],
         type: str | None = None,
         datatype: str | None = None,
     ) -> None: ...
@@ -297,6 +434,33 @@ class Sub:
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.type = kwargs.get("type", elem.get("type"))
         self.datatype = kwargs.get("datatype", elem.get("datatype"))
+
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("sub")
+        add_attrs(
+            elem,
+            {"datatype": self.datatype, "type": self.type},
+            tuple(),
+            force_str,
+        )
+        if isinstance(self.content, str):
+            elem.text = self.content
+        else:
+            for item in self.content:
+                if isinstance(item, str):
+                    if len(elem):
+                        elem[-1].tail += item  # type:ignore
+                    else:
+                        elem.tail += item  # type:ignore
+                elif isinstance(item, (Bpt, Ept, Hi, It, Ph)):
+                    elem.append(item.to_element())
+                    elem[-1].tail = ""
+                else:
+                    raise TypeError(
+                        f"'{type(item)}' Elements are not allowed inside a Sub Element"
+                    )
+        elem.append(elem)
+        return elem
 
 
 @deprecated(
@@ -332,3 +496,30 @@ class Ut:
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.x = kwargs.get("x", elem.get("x"))
+
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("ph")
+        add_attrs(
+            elem,
+            {"x": self.x},
+            tuple(),
+            force_str,
+        )
+        if isinstance(self.content, str):
+            elem.text = self.content
+        else:
+            for item in self.content:
+                if isinstance(item, str):
+                    if len(elem):
+                        elem[-1].tail += item  # type:ignore
+                    else:
+                        elem.tail += item  # type:ignore
+                elif isinstance(item, Sub):
+                    elem.append(item.to_element())
+                    elem[-1].tail = ""
+                else:
+                    raise TypeError(
+                        f"'{type(item)}' Elements are not allowed inside a Ut Element"
+                    )
+        elem.append(elem)
+        return elem

@@ -1,11 +1,12 @@
 from datetime import datetime
-from typing import Literal, MutableSequence, Optional, overload
+from typing import Literal, MutableSequence, overload
 
 from lxml.etree import Element, _Element
 
 from .inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
+from .utils import add_attrs
 
-_xml_ = "w3.org/xml/1998/namespace"
+_xml_ = r"{http://www.w3.org/XML/1998/namespace}"
 _EmptyElem_ = Element("empty")
 
 
@@ -52,11 +53,26 @@ class Map:
         self.ent = kwargs.get("ent", elem.get("ent"))
         self.subst = kwargs.get("subst", elem.get("subst"))
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("map")
+        add_attrs(
+            elem,
+            {
+                "unicode": self.unicode,
+                "code": self.code,
+                "ent": self.ent,
+                "subst": self.subst,
+            },
+            ("unicode",),
+            force_str,
+        )
+        return elem
+
 
 class Ude:
     name: str
     base: str | None
-    maps: MutableSequence[Map] | None
+    maps: MutableSequence[Map]
 
     @overload
     def __init__(self, *, elem: _Element | None = None) -> None: ...
@@ -66,7 +82,7 @@ class Ude:
         *,
         name: str,
         base: str | None = None,
-        maps: MutableSequence[Map] | None = None,
+        maps: MutableSequence[Map],
     ) -> None: ...
     @overload
     def __init__(self, **kwargs) -> None: ...
@@ -89,13 +105,30 @@ class Ude:
         """
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         if "maps" in kwargs:
-            self.maps = kwargs.get("maps")
+            self.maps = kwargs["maps"]
         elif len(elem):
             self.maps = [Map(elem=child) for child in elem if child.tag == "map"]
         else:
             self.maps = []
         self.name = kwargs.get("name", elem.get("name"))
         self.base = kwargs.get("base", elem.get("base"))
+
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("ude")
+        add_attrs(
+            elem,
+            {"name": self.name, "base": self.base},
+            ("name",),
+            force_str,
+        )
+        for map in self.maps:
+            if not self.base and map.code:
+                raise AttributeError(
+                    "The 'base' attribute of a Ude element cannot be None "
+                    "if at least one of its Map elements has a 'code' attribute."
+                )
+            elem.append(map.to_element())
+        return elem
 
 
 class Note:
@@ -130,12 +163,30 @@ class Note:
         self.lang = kwargs.get("lang", elem.get(f"{_xml_}base"))
         self.encoding = kwargs.get("encoding", elem.get("o-encoding"))
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("note")
+        add_attrs(
+            elem,
+            {
+                "lang": self.lang,
+                "encoding": self.encoding,
+            },
+            tuple(),
+            force_str,
+        )
+        if isinstance(self.text, str):
+            elem.text = self.text
+        else:
+            if force_str:
+                elem.text = str(self.text)
+        return elem
+
 
 class Prop:
     text: str
     type: str
-    lang: Optional[str]
-    encoding: Optional[str]
+    lang: str | None
+    encoding: str | None
 
     @overload
     def __init__(self, *, elem: _Element | None = None) -> None: ...
@@ -146,6 +197,7 @@ class Prop:
         elem: _Element | None = None,
         text: str,
         type: str,
+        lang: str | None = None,
         encoding: str | None = None,
     ) -> None: ...
     @overload
@@ -174,6 +226,25 @@ class Prop:
         self.encoding = kwargs.get("encoding", elem.get("o-encoding"))
         self.type = kwargs.get("type", elem.get("type"))
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("prop")
+        add_attrs(
+            elem,
+            {
+                "lang": self.lang,
+                "encoding": self.encoding,
+                "type": self.type,
+            },
+            ("type"),
+            force_str,
+        )
+        if isinstance(self.text, str):
+            elem.text = self.text
+        else:
+            if force_str:
+                elem.text = str(self.text)
+        return elem
+
 
 class Header:
     creationtool: str
@@ -188,8 +259,9 @@ class Header:
     creationid: str | None
     changedate: datetime | None
     changeid: str | None
-    notes: MutableSequence[Note] | None
-    props: MutableSequence[Prop] | None
+    notes: MutableSequence[Note]
+    props: MutableSequence[Prop]
+    udes: MutableSequence[Ude]
 
     @overload
     def __init__(self, *, elem: _Element | None = None) -> None: ...
@@ -211,6 +283,7 @@ class Header:
         changeid: str | None = None,
         notes: MutableSequence[Note] | None = None,
         props: MutableSequence[Prop] | None = None,
+        udes: MutableSequence[Ude] | None = None,
     ) -> None: ...
     @overload
     def __init__(self, **kwargs) -> None: ...
@@ -264,17 +337,23 @@ class Header:
         self.changedate = kwargs.get("changedate", elem.get("changedate"))
         self.changeid = kwargs.get("changeid", elem.get("changeid"))
         if "notes" in kwargs:
-            self.notes = kwargs.get("notes")
+            self.notes = kwargs["notes"]
         elif len(elem):
             self.notes = [Note(elem=child) for child in elem if child.tag == "note"]
         else:
             self.notes = []
         if "props" in kwargs:
-            self.props = kwargs.get("props")
+            self.props = kwargs["props"]
         elif len(elem):
             self.props = [Prop(elem=child) for child in elem if child.tag == "prop"]
         else:
             self.props = []
+        if "udes" in kwargs:
+            self.udes = kwargs["udes"]
+        elif len(elem):
+            self.udes = [Ude(elem=child) for child in elem if child.tag == "ude"]
+        else:
+            self.udes = []
         if isinstance(self.creationdate, str):
             try:
                 self.creationdate = datetime.strptime(
@@ -287,6 +366,32 @@ class Header:
                 self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
             except (TypeError, ValueError):
                 pass
+
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("header")
+        add_attrs(
+            elem,
+            {
+                key: val
+                for key, val in self.__dict__.items()
+                if not key.startswith(("__", "to", "prop", "note", "ude"))
+            },
+            (
+                "creationtool",
+                "creationtoolversion",
+                "segtype",
+                "tmf",
+                "adminlang",
+                "srclang",
+                "datatype",
+            ),
+            force_str,
+        )
+        elem.extend(
+            child.to_element()  # type: ignore
+            for child in (*self.notes, *self.props, *self.udes)
+        )
+        return elem
 
 
 class Tuv:
@@ -303,6 +408,8 @@ class Tuv:
     changedate: datetime | None
     changeid: str | None
     tmf: str | None
+    notes: MutableSequence[Note]
+    props: MutableSequence[Prop]
 
     @overload
     def __init__(self, *, elem: _Element | None = None) -> None: ...
@@ -375,6 +482,19 @@ class Tuv:
         self.changeid = kwargs.get("changeid", elem.get("changeid"))
         self.tmf = kwargs.get("tmf", elem.get("o-tmf"))
 
+        if "notes" in kwargs:
+            self.notes = kwargs["notes"]
+        elif len(elem):
+            self.notes = [Note(elem=child) for child in elem if child.tag == "note"]
+        else:
+            self.notes = []
+        if "props" in kwargs:
+            self.props = kwargs["props"]
+        elif len(elem):
+            self.props = [Prop(elem=child) for child in elem if child.tag == "prop"]
+        else:
+            self.props = []
+
         if isinstance(self.creationdate, str):
             try:
                 self.creationdate = datetime.strptime(
@@ -399,6 +519,39 @@ class Tuv:
                 self.usagecount = int(self.usagecount)
             except (TypeError, ValueError):
                 pass
+
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("tuv")
+        add_attrs(
+            elem,
+            {
+                key: val
+                for key, val in self.__dict__.items()
+                if not key.startswith(("__", "to", "prop", "note", "segment"))
+            },
+            ("lang",),
+            force_str,
+        )
+        elem.extend(
+            child.to_element()  # type: ignore
+            for child in (*self.notes, *self.props)
+        )
+        seg = Element("seg")
+        seg.text = ""
+        if isinstance(self.segment, str):
+            seg.text = self.segment
+        else:
+            for item in self.segment:
+                if isinstance(item, str):
+                    if len(seg):
+                        seg[-1].tail += item  # type:ignore
+                    else:
+                        seg.text += elem  # type:ignore
+                elif isinstance(item, (Bpt, Ept, It, Hi, Ph, Sub, Ut)):
+                    seg.append(item.to_element())
+                    seg[-1].tail = ""
+        elem.append(seg)
+        return elem
 
 
 class Tu:
@@ -539,6 +692,24 @@ class Tu:
             except (TypeError, ValueError):
                 pass
 
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("tu")
+        add_attrs(
+            elem,
+            {
+                key: val
+                for key, val in self.__dict__.items()
+                if not key.startswith(("__", "to", "prop", "note", "tuv"))
+            },
+            tuple(),
+            force_str,
+        )
+        elem.extend(
+            child.to_element()
+            for child in (*self.notes, *self.props, *self.tuvs)  # type: ignore
+        )
+        return elem
+
 
 class Tmx:
     header: Header
@@ -569,3 +740,16 @@ class Tmx:
                 self.tus = [Tu(elem=child) for child in body if child.tag == "tu"]
             else:
                 self.tus = []
+
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element("tmx")
+        elem.set("version", "1.4")
+        body = Element("body")
+        if self.header is None:
+            raise AttributeError(
+                "The 'header' attribute of the Tmx element cannot be None"
+            )
+        elem.append(self.header.to_element())
+        body.extend(tu.to_element() for tu in self.tus)
+        elem.append(body)
+        return elem
