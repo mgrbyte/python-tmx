@@ -124,7 +124,6 @@ class Bpt:
                     raise TypeError(
                         f"'{type(item)}' Elements are not allowed inside a Bpt Element"
                     )
-        elem.append(elem)
         return elem
 
 
@@ -186,7 +185,6 @@ class Ept:
                     raise TypeError(
                         f"'{type(item)}' Elements are not allowed inside a Ept Element"
                     )
-        elem.append(elem)
         return elem
 
 
@@ -253,7 +251,6 @@ class Hi:
                     raise TypeError(
                         f"'{type(item)}' Elements are not allowed inside a Hi Element"
                     )
-        elem.append(elem)
         return elem
 
 
@@ -325,7 +322,6 @@ class It:
                     raise TypeError(
                         f"'{type(item)}' Elements are not allowed inside a It Element"
                     )
-        elem.append(elem)
         return elem
 
 
@@ -366,7 +362,7 @@ class Ph:
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.x = kwargs.get("x", elem.get("x"))
         self.type = kwargs.get("type", elem.get("type"))
-        self.pos = kwargs.get("pos", elem.get("pos"))
+        self.assoc = kwargs.get("assoc", elem.get("assoc"))
         if isinstance(self.x, str):
             try:
                 self.x = int(self.x)
@@ -397,7 +393,6 @@ class Ph:
                     raise TypeError(
                         f"'{type(item)}' Elements are not allowed inside a Ph Element"
                     )
-        elem.append(elem)
         return elem
 
 
@@ -459,7 +454,6 @@ class Sub:
                     raise TypeError(
                         f"'{type(item)}' Elements are not allowed inside a Sub Element"
                     )
-        elem.append(elem)
         return elem
 
 
@@ -521,5 +515,4 @@ class Ut:
                     raise TypeError(
                         f"'{type(item)}' Elements are not allowed inside a Ut Element"
                     )
-        elem.append(elem)
         return elem

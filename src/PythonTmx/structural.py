@@ -1,71 +1,71 @@
 from datetime import datetime
-from typing import Literal, MutableSequence, overload
+from typing import Literal, MutableSequence, override
 
 from lxml.etree import Element, _Element
 
 from .inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
-from .utils import add_attrs
 
 _xml_ = r"{http://www.w3.org/XML/1998/namespace}"
-_EmptyElem_ = Element("empty")
+_empty_elem_ = Element("empty")
 
 
-class Map:
+class Structural:
+    """
+    Base class for Structural elements.
+    Not meant to be instantiated.
+    """
+
+    _source_elem: _Element | None
+
+    def __init__(self):
+        raise NotImplementedError
+
+    def to_element(self):
+        raise NotImplementedError
+
+
+class Map(Structural):
     unicode: str
     code: str | None
     ent: str | None
     subst: str | None
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
     def __init__(
         self,
         *,
-        unicode: str,
+        elem: _Element | None = None,
+        unicode: str | None = None,
         code: str | None = None,
         ent: str | None = None,
         subst: str | None = None,
-    ) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...  # hack to make mypy happy
+    ) -> None:
+        elem = elem if elem is not None else _empty_elem_
+        self._source_elem = elem if elem is not _empty_elem_ else None
 
-    def __init__(self, **kwargs) -> None:
-        """
-        Used to specify a user-defined character and some of its properties.
-        Can only exist as a child of a Ude element.
+        # Required Attributes
+        self.unicode = unicode if unicode is not None else elem.get("unicode")
 
-        :param unicode: The Unicode character value
-        :type unicode: str
-        :param elem: An lxml Element to use as default for attribute values,
-        defaults to None.
-        :type elem: _Element | None, optional
-        :param code: The code-point value of to the unicode character.
-        :type code: str | None, optional
-        :param ent: The entity name of the character, defaults to None
-        :type ent: str | None, optional
-        :param subst: An alternative string, defaults to None
-        :type subst: str | None, optional
-        """
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        self.unicode = kwargs.get("unicode", elem.get("unicode"))
-        self.code = kwargs.get("code", elem.get("code"))
-        self.ent = kwargs.get("ent", elem.get("ent"))
-        self.subst = kwargs.get("subst", elem.get("subst"))
+        # Optional Attributes
+        self.code = code if code is not None else elem.get("code")
+        self.ent = ent if ent is not None else elem.get("ent")
+        self.subst = subst if subst is not None else elem.get("subst")
 
-    def to_element(self, force_str: bool = False) -> _Element:
+    @override
+    def to_element(self):
         elem = Element("map")
-        add_attrs(
-            elem,
-            {
-                "unicode": self.unicode,
-                "code": self.code,
-                "ent": self.ent,
-                "subst": self.subst,
-            },
-            ("unicode",),
-            force_str,
-        )
+
+        # Required Attributes
+        if self.unicode is None:
+            raise AttributeError("Attribute 'unicode' is required for Map Elements")
+        elem.set("unicode", self.unicode)
+
+        # Optional Attributes
+        if self.code is not None:
+            elem.set("code", self.code)
+        if self.ent is not None:
+            elem.set("ent", self.ent)
+        if self.subst is not None:
+            elem.set("subst", self.subst)
         return elem
 
 
@@ -74,60 +74,58 @@ class Ude:
     base: str | None
     maps: MutableSequence[Map]
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
     def __init__(
         self,
         *,
-        name: str,
-        base: str | None = None,
-        maps: MutableSequence[Map],
-    ) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...
+        elem: _Element | None = None,
+        name: str | None = None,
+        base: str | None | None = None,
+        maps: MutableSequence[Map] | None = None,
+    ) -> None:
+        elem = elem if elem is not None else _empty_elem_
+        self._source_elem = elem if elem is not _empty_elem_ else None
 
-    def __init__(self, **kwargs) -> None:
-        """
-        Used to specify a set of user-defined characters and/or, optionally
-        their mapping from Unicode to the user-defined encoding.
+        # Required Attributes
+        self.name = name if name is not None else elem.get("name")
 
-        :param name: Name of the element, its value is not defined by the standard
-        :type name: str
-        :param elem: An lxml Element to use as default for attribute values,
-        defaults to None.
-        :type elem: _Element | None, optional
-        :param base: The encoding upon which the re-mapping is based, defaults to None.
-        Required if one or more of the Map elements contains a code attribute.
-        :type base: str | None, optional
-        :param maps: An array of all the Map Elements consituting the Ude, defaults to None
-        :type maps: MutableSequence[Map] | None, optional
-        """
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        if "maps" in kwargs:
-            self.maps = kwargs["maps"]
-        elif len(elem):
-            self.maps = [Map(elem=child) for child in elem if child.tag == "map"]
+        # Optional Attributes
+        self.base = base if base is not None else elem.get("base")
+
+        # Sequence Attributes
+        if maps is None:
+            if len(elem):
+                self.maps = [
+                    Map(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "map"
+                ]
+            else:
+                self.maps = []
         else:
-            self.maps = []
-        self.name = kwargs.get("name", elem.get("name"))
-        self.base = kwargs.get("base", elem.get("base"))
+            self.maps = maps
 
-    def to_element(self, force_str: bool = False) -> _Element:
+    @override
+    def to_element(self):
         elem = Element("ude")
-        add_attrs(
-            elem,
-            {"name": self.name, "base": self.base},
-            ("name",),
-            force_str,
-        )
-        for map in self.maps:
-            if not self.base and map.code:
-                raise AttributeError(
-                    "The 'base' attribute of a Ude element cannot be None "
-                    "if at least one of its Map elements has a 'code' attribute."
-                )
-            elem.append(map.to_element())
+
+        # Required Attributes
+        if self.name is None:
+            raise AttributeError("Attribute 'name' is required for Ude Elements")
+        elem.set("name", self.name)
+
+        # Optional Attributes/Sequence Attributes
+        if not self.base:
+            if len(self.maps):
+                for map in self.maps:
+                    if not isinstance(map.code, str):
+                        raise AttributeError(
+                            "Attribute 'base' is required for Ude Elements if "
+                            "they contain 1 or more Map Elements with a 'code' "
+                            "attribute"
+                        )
+                    elem.append(map.to_element())
+        else:
+            elem.extend(map.to_element() for map in self.maps)
         return elem
 
 
@@ -136,49 +134,42 @@ class Note:
     lang: str | None
     encoding: str | None
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
-    def __init__(self, *, text: str, encoding: str | None = None) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...
+    def __init__(
+        self,
+        *,
+        elem: _Element | None = None,
+        text: str | None = None,
+        lang: str | None = None,
+        encoding: str | None = None,
+    ) -> None:
+        elem = elem if elem is not None else _empty_elem_
+        self._source_elem = elem if elem is not _empty_elem_ else None
 
-    def __init__(self, **kwargs) -> None:
-        """
-        Used for comments.
+        # Required Attributes
+        self.text = text if text is not None else elem.text
 
-        :param elem: An lxml Element to use as default for attribute values,
-        defaults to None.
-        :type elem: _Element | None, optional
-        :param text: The actual text of the Note
-        :type text: str
-        :param lang: The locale of the text, defaults to None
-        :type lang: str | None, optional
-        :param encoding: The original or preferred code set of the data of the
-        element in case it is to be re-encoded in a non-Unicode code set, defaults to None
-        :type encoding: str | None, optional
-        """
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        self.text = kwargs.get("text", elem.text)
-        self.lang = kwargs.get("lang", elem.get(f"{_xml_}base"))
-        self.encoding = kwargs.get("encoding", elem.get("o-encoding"))
-
-    def to_element(self, force_str: bool = False) -> _Element:
-        elem = Element("note")
-        add_attrs(
-            elem,
-            {
-                "lang": self.lang,
-                "encoding": self.encoding,
-            },
-            tuple(),
-            force_str,
+        # Optional Attributes
+        self.lang = (
+            lang
+            if lang is not None
+            else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
         )
-        if isinstance(self.text, str):
-            elem.text = self.text
-        else:
-            if force_str:
-                elem.text = str(self.text)
+        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
+
+    @override
+    def to_element(self):
+        elem = Element("note")
+
+        # Required Attributes
+        if self.text is None:
+            raise AttributeError("Attribute 'text' is required for Note Elements")
+        elem.text = self.text
+
+        # Optional Attributes
+        if self.lang is not None:
+            elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
+        if self.encoding is not None:
+            elem.set("o-encoding", self.encoding)
         return elem
 
 
@@ -188,61 +179,47 @@ class Prop:
     lang: str | None
     encoding: str | None
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
     def __init__(
         self,
         *,
         elem: _Element | None = None,
-        text: str,
-        type: str,
+        text: str | None = None,
+        type: str | None = None,
         lang: str | None = None,
         encoding: str | None = None,
-    ) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...
+    ) -> None:
+        elem = elem if elem is not None else _empty_elem_
+        self._source_elem = elem if elem is not _empty_elem_ else None
 
-    def __init__(self, **kwargs) -> None:
-        """
-        _summary_
+        # Required Attributes
+        self.type = type if type is not None else elem.get("type")
+        self.text = text if text is not None else elem.text
 
-        :param elem: An lxml Element to use as default for attribute values,
-        defaults to None.
-        :type elem: _Element | None, optional
-        :param text: The actual text of the Note
-        :type text: str
-        :param type: the kind of data the element represents.
-        :type type: str
-        :param lang: The locale of the text, defaults to None
-        :type lang: str | None, optional
-        :param encoding: The original or preferred code set of the data of the
-        element in case it is to be re-encoded in a non-Unicode code set, defaults to None
-        :type encoding: str | None, optional
-        """
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        self.text = kwargs.get("text", elem.text)
-        self.lang = kwargs.get("lang", elem.get(f"{_xml_}base"))
-        self.encoding = kwargs.get("encoding", elem.get("o-encoding"))
-        self.type = kwargs.get("type", elem.get("type"))
-
-    def to_element(self, force_str: bool = False) -> _Element:
-        elem = Element("prop")
-        add_attrs(
-            elem,
-            {
-                "lang": self.lang,
-                "encoding": self.encoding,
-                "type": self.type,
-            },
-            ("type"),
-            force_str,
+        # Optional Attributes
+        self.lang = (
+            lang
+            if lang is not None
+            else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
         )
-        if isinstance(self.text, str):
-            elem.text = self.text
-        else:
-            if force_str:
-                elem.text = str(self.text)
+        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
+
+    @override
+    def to_element(self):
+        elem = Element("prop")
+
+        # Required Attributes
+        if self.text is None:
+            raise AttributeError("Attribute 'text' is required for Prop Elements")
+        elem.text = self.text
+        if self.type is None:
+            raise AttributeError("Attribute 'type' is required for Prop Elements")
+        elem.set("type", self.type)
+
+        # Optional Attributes
+        if self.lang is not None:
+            elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
+        if self.encoding is not None:
+            elem.set("o-encoding", self.encoding)
         return elem
 
 
@@ -263,139 +240,170 @@ class Header:
     props: MutableSequence[Prop]
     udes: MutableSequence[Ude]
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
     def __init__(
         self,
         *,
-        creationtool: str,
-        creationtoolversion: str,
-        segtype: Literal["block", "paragraph", "sentence", "phrase"],
-        tmf: str,
-        adminlang: str,
-        srclang: str,
-        datatype: str,
-        encoding: str | None = None,
-        creationdate: datetime | None = None,
-        creationid: str | None = None,
-        changedate: datetime | None = None,
-        changeid: str | None = None,
+        elem: _Element | None = None,
+        creationtool: str | None = None,
+        creationtoolversion: str | None = None,
+        segtype: Literal["block", "paragraph", "sentence", "phrase"] | None = None,
+        tmf: str | None = None,
+        adminlang: str | None = None,
+        srclang: str | None = None,
+        datatype: str | None = None,
+        encoding: str | None | None = None,
+        creationdate: datetime | None | None = None,
+        creationid: str | None | None = None,
+        changedate: datetime | None | None = None,
+        changeid: str | None | None = None,
         notes: MutableSequence[Note] | None = None,
         props: MutableSequence[Prop] | None = None,
         udes: MutableSequence[Ude] | None = None,
-    ) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...
+    ) -> None:
+        elem = elem if elem is not None else _empty_elem_
+        self._source_elem = elem if elem is not _empty_elem_ else None
 
-    def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param creationtool: _description_
-        :type creationtool: str
-        :param creationtoolversion: _description_
-        :type creationtoolversion: str
-        :param segtype: _description_
-        :type segtype: Literal[&quot;block&quot;, &quot;paragraph&quot;, &quot;sentence&quot;, &quot;phrase&quot;]
-        :param tmf: _description_
-        :type tmf: str
-        :param adminlang: _description_
-        :type adminlang: str
-        :param srclang: _description_
-        :type srclang: str
-        :param datatype: _description_
-        :type datatype: str
-        :param encoding: _description_, defaults to None
-        :type encoding: str | None, optional
-        :param creationdate: _description_, defaults to None
-        :type creationdate: datetime | None, optional
-        :param creationid: _description_, defaults to None
-        :type creationid: str | None, optional
-        :param changedate: _description_, defaults to None
-        :type changedate: datetime | None, optional
-        :param changeid: _description_, defaults to None
-        :type changeid: str | None, optional
-        :param notes: _description_, defaults to None
-        :type notes: MutableSequence[Note] | None, optional
-        :param props: _description_, defaults to None
-        :type props: MutableSequence[Prop] | None, optional
-        """
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        self.creationtool = kwargs.get("creationtool", elem.get("creationtool"))
-        self.creationtoolversion = kwargs.get(
-            "creationtoolversion", elem.get("creationtoolversion")
+        # Required Attributes
+        self.creationtool = (
+            creationtool if creationtool is not None else elem.get("creationtool")
         )
-        self.segtype = kwargs.get("segtype", elem.get("segtype"))
-        self.tmf = kwargs.get("tmf", elem.get("o-tmf"))
-        self.adminlang = kwargs.get("adminlang", elem.get("adminlang"))
-        self.srclang = kwargs.get("srclang", elem.get("srclang"))
-        self.datatype = kwargs.get("datatype", elem.get("datatype"))
-        self.encoding = kwargs.get("encoding", elem.get("o-encoding"))
-        self.creationdate = kwargs.get("creationdate", elem.get("creationdate"))
-        self.creationid = kwargs.get("creationid", elem.get("creationid"))
-        self.changedate = kwargs.get("changedate", elem.get("changedate"))
-        self.changeid = kwargs.get("changeid", elem.get("changeid"))
-        if "notes" in kwargs:
-            self.notes = kwargs["notes"]
-        elif len(elem):
-            self.notes = [Note(elem=child) for child in elem if child.tag == "note"]
-        else:
-            self.notes = []
-        if "props" in kwargs:
-            self.props = kwargs["props"]
-        elif len(elem):
-            self.props = [Prop(elem=child) for child in elem if child.tag == "prop"]
-        else:
-            self.props = []
-        if "udes" in kwargs:
-            self.udes = kwargs["udes"]
-        elif len(elem):
-            self.udes = [Ude(elem=child) for child in elem if child.tag == "ude"]
-        else:
-            self.udes = []
-        if isinstance(self.creationdate, str):
-            try:
-                self.creationdate = datetime.strptime(
-                    self.creationdate, r"%Y%m%dT%H%M%SZ"
-                )
-            except (TypeError, ValueError):
-                pass
-        if isinstance(self.changedate, str):
-            try:
-                self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
-            except (TypeError, ValueError):
-                pass
+        self.creationtoolversion = (
+            creationtoolversion
+            if creationtoolversion is not None
+            else elem.get("creationtoolversion")
+        )
+        self.segtype = segtype if segtype is not None else elem.get("segtype")
+        self.tmf = tmf if tmf is not None else elem.get("o-tmf")
+        self.adminlang = adminlang if adminlang is not None else elem.get("adminlang")
+        self.srclang = srclang if srclang is not None else elem.get("srclang")
+        self.datatype = datatype if datatype is not None else elem.get("datatype")
+        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
 
-    def to_element(self, force_str: bool = False) -> _Element:
+        # Optional Attributes
+        self.creationdate = (
+            creationdate if creationdate is not None else elem.get("creationdate")
+        )
+        self.creationid = (
+            creationid if creationid is not None else elem.get("creationid")
+        )
+        self.changedate = (
+            changedate if changedate is not None else elem.get("changedate")
+        )
+        self.changeid = changeid if changeid is not None else elem.get("changeid")
+
+        # Sequence Attributes
+        if notes is None:
+            if len(elem):
+                self.notes = [
+                    Note(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "note"
+                ]
+            else:
+                self.notes = []
+        else:
+            self.notes = notes
+        if props is None:
+            if len(elem):
+                self.props = [
+                    Prop(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "prop"
+                ]
+            else:
+                self.props = []
+        else:
+            self.props = props
+        if udes is None:
+            if len(elem):
+                self.udes = [
+                    Ude(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "ude"
+                ]
+            else:
+                self.udes = []
+        else:
+            self.udes = udes
+
+        try:
+            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")
+        except (TypeError, ValueError):
+            pass
+        try:
+            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
+        except (TypeError, ValueError):
+            pass
+
+    @override
+    def to_element(self):
         elem = Element("header")
-        add_attrs(
-            elem,
-            {
-                key: val
-                for key, val in self.__dict__.items()
-                if not key.startswith(("__", "to", "prop", "note", "ude"))
-            },
-            (
-                "creationtool",
-                "creationtoolversion",
-                "segtype",
-                "tmf",
-                "adminlang",
-                "srclang",
-                "datatype",
-            ),
-            force_str,
-        )
-        elem.extend(
-            child.to_element()  # type: ignore
-            for child in (*self.notes, *self.props, *self.udes)
-        )
+
+        # Required Attributes
+        if self.creationtool is None:
+            raise AttributeError(
+                "Attribute 'creationtool' is required for Header Elements"
+            )
+        elem.set("creationtool", self.creationtool)
+        if self.creationtoolversion is None:
+            raise AttributeError(
+                "Attribute 'creationtoolversion' is required for Header Elements"
+            )
+        elem.set("creationtoolversion", self.creationtoolversion)
+        if self.segtype is None:
+            raise AttributeError("Attribute 'segtype' is required for Header Elements")
+        elif self.segtype.lower() not in ("block", "paragraph", "sentence", "phrase"):
+            raise AttributeError(
+                "Attribute 'segtype' must be one of"
+                '"block", "paragraph", "sentence", "phrase"'
+                f"but got {self.segtype.lower()}"
+            )
+        elem.set("segtype", self.segtype.lower())
+        if self.tmf is None:
+            raise AttributeError("Attribute 'tmf' is required for Header Elements")
+        elem.set("o-tmf", self.tmf)
+        if self.adminlang is None:
+            raise AttributeError(
+                "Attribute 'adminlang' is required for Header Elements"
+            )
+        elem.set("adminlang", self.adminlang)
+        if self.srclang is None:
+            raise AttributeError("Attribute 'srclang' is required for Header Elements")
+        elem.set("srclang", self.srclang)
+        if self.datatype is None:
+            raise AttributeError("Attribute 'datatype' is required for Header Elements")
+        elem.set("datatype", self.datatype)
+
+        # Optional Attributes
+        if self.encoding is not None:
+            elem.set("o-encoding", self.encoding)
+        if self.creationdate is not None:
+            if isinstance(self.creationdate, datetime):
+                elem.set("creationdate", self.creationdate.strftime(r"%Y%m%dT%H%M%SZ"))
+            else:
+                elem.set("creationdate", self.creationdate)
+        if self.creationid is not None:
+            elem.set("creationid", self.creationid)
+        if self.changedate is not None:
+            if isinstance(self.changedate, datetime):
+                elem.set("changedate", self.changedate.strftime(r"%Y%m%dT%H%M%SZ"))
+            else:
+                elem.set("changedate", self.changedate)
+        if self.changeid is not None:
+            elem.set("changeid", self.changeid)
+
+        # Sequence Attributes
+        if len(self.notes):
+            elem.extend(note.to_element() for note in self.notes)
+        if len(self.props):
+            elem.extend(prop.to_element() for prop in self.props)
+        if len(self.udes):
+            elem.extend(ude.to_element() for ude in self.udes)
         return elem
 
 
 class Tuv:
-    segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut]
+    segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] | str
     lang: str
     encoding: str | None
     datatype: str | None
@@ -411,14 +419,14 @@ class Tuv:
     notes: MutableSequence[Note]
     props: MutableSequence[Prop]
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
     def __init__(
         self,
         *,
-        segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] | str,
-        lang: str,
+        elem: _Element | None = None,
+        segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut]
+        | str
+        | None = None,
+        lang: str | None = None,
         encoding: str | None = None,
         datatype: str | None = None,
         usagecount: int | None = None,
@@ -429,128 +437,160 @@ class Tuv:
         creationid: str | None = None,
         changedate: datetime | None = None,
         changeid: str | None = None,
-        tmf: str | None,
-    ) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...
+        tmf: str | None = None,
+        notes: MutableSequence[Note] | None = None,
+        props: MutableSequence[Prop] | None = None,
+    ) -> None:
+        elem = elem if elem is not None else _empty_elem_
+        self._source_elem = elem if elem is not _empty_elem_ else None
 
-    def __init__(self, **kwargs) -> None:
-        """
-        _summary_
+        # Required Attributes
+        self.segment = segment if segment is None else _parse_inline(elem)
 
-        :param segment: _description_
-        :type segment: MutableSequence[str  |  Bpt  |  Ept  |  It  |  Hi  |  Ph  |  Sub  |  Ut] | str
-        :param lang: _description_
-        :type lang: str
-        :param tmf: _description_
-        :type tmf: str | None
-        :param encoding: _description_, defaults to None
-        :type encoding: str | None, optional
-        :param datatype: _description_, defaults to None
-        :type datatype: str | None, optional
-        :param usagecount: _description_, defaults to None
-        :type usagecount: int | None, optional
-        :param lastusagedate: _description_, defaults to None
-        :type lastusagedate: datetime | None, optional
-        :param creationtool: _description_, defaults to None
-        :type creationtool: str | None, optional
-        :param creationtoolversion: _description_, defaults to None
-        :type creationtoolversion: str | None, optional
-        :param creationdate: _description_, defaults to None
-        :type creationdate: datetime | None, optional
-        :param creationid: _description_, defaults to None
-        :type creationid: str | None, optional
-        :param changedate: _description_, defaults to None
-        :type changedate: datetime | None, optional
-        :param changeid: _description_, defaults to None
-        :type changeid: str | None, optional
-        """
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        self.segment = kwargs.get("segment", _parse_inline(elem=elem.find("seg")))
-        self.lang = kwargs.get("lang", elem.get(f"{_xml_}lang"))
-        self.encoding = kwargs.get("encoding", elem.get("o-encoding"))
-        self.datatype = kwargs.get("datatype", elem.get("datatype"))
-        self.usagecount = kwargs.get("usagecount", elem.get("usagecount"))
-        self.lastusagedate = kwargs.get("lastusagedate", elem.get("lastusagedate"))
-        self.creationtool = kwargs.get("creationtool", elem.get("creationtool"))
-        self.creationtoolversion = kwargs.get(
-            "creationtoolversion", elem.get("creationtoolversion")
+        # Optional Attributes
+        self.lang = (
+            lang
+            if lang is not None
+            else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
         )
-        self.creationdate = kwargs.get("creationdate", elem.get("creationdate"))
-        self.creationid = kwargs.get("creationid", elem.get("creationid"))
-        self.changedate = kwargs.get("changedate", elem.get("changedate"))
-        self.changeid = kwargs.get("changeid", elem.get("changeid"))
-        self.tmf = kwargs.get("tmf", elem.get("o-tmf"))
+        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
+        self.datatype = datatype if datatype is not None else elem.get("datatype")
+        self.usagecount = (
+            usagecount if usagecount is not None else elem.get("usagecount")
+        )
+        self.lastusagedate = (
+            lastusagedate if lastusagedate is not None else elem.get("lastusagedate")
+        )
+        self.creationtool = (
+            creationtool if creationtool is not None else elem.get("creationtool")
+        )
+        self.creationtoolversion = (
+            creationtoolversion
+            if creationtoolversion is not None
+            else elem.get("creationtoolversion")
+        )
+        self.creationdate = (
+            creationdate if creationdate is not None else elem.get("creationdate")
+        )
+        self.creationid = (
+            creationid if creationid is not None else elem.get("creationid")
+        )
+        self.changedate = (
+            changedate if changedate is not None else elem.get("changedate")
+        )
+        self.changeid = changeid if changeid is not None else elem.get("changeid")
+        self.tmf = tmf if tmf is not None else elem.get("o-tmf")
 
-        if "notes" in kwargs:
-            self.notes = kwargs["notes"]
-        elif len(elem):
-            self.notes = [Note(elem=child) for child in elem if child.tag == "note"]
+        # Try to coerce
+        try:
+            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")
+        except (TypeError, ValueError):
+            pass
+        try:
+            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
+        except (TypeError, ValueError):
+            pass
+        try:
+            self.lastusagedate = datetime.strptime(
+                self.lastusagedate, r"%Y%m%dT%H%M%SZ"
+            )
+        except (TypeError, ValueError):
+            pass
+        try:
+            self.usagecount = int(self.usagecount)
+        except (TypeError, ValueError):
+            pass
+
+        # Sequence Attributes
+        if notes is None:
+            if len(elem):
+                self.notes = [
+                    Note(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "note"
+                ]
+            else:
+                self.notes = []
         else:
-            self.notes = []
-        if "props" in kwargs:
-            self.props = kwargs["props"]
-        elif len(elem):
-            self.props = [Prop(elem=child) for child in elem if child.tag == "prop"]
+            self.notes = notes
+        if props is None:
+            if len(elem):
+                self.props = [
+                    Prop(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "prop"
+                ]
+            else:
+                self.props = []
         else:
-            self.props = []
+            self.props = props
 
-        if isinstance(self.creationdate, str):
-            try:
-                self.creationdate = datetime.strptime(
-                    self.creationdate, r"%Y%m%dT%H%M%SZ"
-                )
-            except (TypeError, ValueError):
-                pass
-        if isinstance(self.changedate, str):
-            try:
-                self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
-            except (TypeError, ValueError):
-                pass
-        if isinstance(self.lastusagedate, str):
-            try:
-                self.lastusagedate = datetime.strptime(
-                    self.lastusagedate, r"%Y%m%dT%H%M%SZ"
-                )
-            except (TypeError, ValueError):
-                pass
-        if isinstance(self.usagecount, str):
-            try:
-                self.usagecount = int(self.usagecount)
-            except (TypeError, ValueError):
-                pass
-
-    def to_element(self, force_str: bool = False) -> _Element:
+    @override
+    def to_element(self):
         elem = Element("tuv")
-        add_attrs(
-            elem,
-            {
-                key: val
-                for key, val in self.__dict__.items()
-                if not key.startswith(("__", "to", "prop", "note", "segment"))
-            },
-            ("lang",),
-            force_str,
-        )
-        elem.extend(
-            child.to_element()  # type: ignore
-            for child in (*self.notes, *self.props)
-        )
+
+        # Sequence Attributes
+        if len(self.notes):
+            elem.extend(note.to_element() for note in self.notes)
+        if len(self.props):
+            elem.extend(prop.to_element() for prop in self.props)
+
+        # Required Attributes
+        if self.segment is None:
+            raise AttributeError("Attribute 'segment' is required for Tuv Elements")
         seg = Element("seg")
-        seg.text = ""
         if isinstance(self.segment, str):
             seg.text = self.segment
         else:
             for item in self.segment:
                 if isinstance(item, str):
-                    if len(seg):
-                        seg[-1].tail += item  # type:ignore
+                    if not len(seg):
+                        seg[-1].tail = (
+                            seg[-1].tail + item if seg[-1].tail is not None else item
+                        )
                     else:
-                        seg.text += elem  # type:ignore
-                elif isinstance(item, (Bpt, Ept, It, Hi, Ph, Sub, Ut)):
+                        seg.text = seg.text + item if seg.text is not None else item
+                else:
                     seg.append(item.to_element())
-                    seg[-1].tail = ""
         elem.append(seg)
+
+        # Optional Attributes
+        if self.lang is not None:
+            elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
+        if self.datatype is not None:
+            elem.set("datatype", self.datatype)
+        if self.usagecount is not None:
+            if isinstance(self.usagecount, int):
+                elem.set("usagecount", str(self.usagecount))
+            else:
+                elem.set("usagecount", self.usagecount)
+        if self.lastusagedate is not None:
+            if isinstance(self.lastusagedate, datetime):
+                elem.set(
+                    "lastusagedate", self.lastusagedate.strftime(r"%Y%m%dT%H%M%SZ")
+                )
+            else:
+                elem.set("lastusagedate", self.lastusagedate)
+        if self.creationtool is not None:
+            elem.set("creationtool", self.creationtool)
+        if self.creationtoolversion is not None:
+            elem.set("creationtoolversion", self.creationtoolversion)
+        if self.creationdate is not None:
+            if isinstance(self.creationdate, datetime):
+                elem.set("creationdate", self.creationdate.strftime(r"%Y%m%dT%H%M%SZ"))
+            else:
+                elem.set("creationdate", self.creationdate)
+        if self.creationid is not None:
+            elem.set("creationid", self.creationid)
+        if self.changedate is not None:
+            if isinstance(self.changedate, datetime):
+                elem.set("changedate", self.changedate.strftime(r"%Y%m%dT%H%M%SZ"))
+            else:
+                elem.set("changedate", self.changedate)
+        if self.changeid is not None:
+            elem.set("changeid", self.changeid)
+        if self.tmf is not None:
+            elem.set("o-tmf", self.tmf)
         return elem
 
 
@@ -573,13 +613,12 @@ class Tu:
     notes: MutableSequence[Note] | None
     props: MutableSequence[Prop] | None
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
     def __init__(
         self,
         *,
+        elem: _Element | None = None,
         tuid: str | None = None,
+        lang: str | None = None,
         encoding: str | None = None,
         datatype: str | None = None,
         usagecount: int | None = None,
@@ -593,121 +632,172 @@ class Tu:
         changeid: str | None = None,
         tmf: str | None = None,
         srclang: str | None = None,
-        tuvs: MutableSequence[Tuv] | None = None,
         notes: MutableSequence[Note] | None = None,
         props: MutableSequence[Prop] | None = None,
-    ) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...
+        tuvs: MutableSequence[Tuv] | None = None,
+    ) -> None:
+        elem = elem if elem is not None else _empty_elem_
+        self._source_elem = elem if elem is not _empty_elem_ else None
 
-    def __init__(self, **kwargs) -> None:
-        """
-        _summary_
+        # No Required Attributes
 
-        :param tuid: _description_, defaults to None
-        :type tuid: str | None, optional
-        :param encoding: _description_, defaults to None
-        :type encoding: str | None, optional
-        :param datatype: _description_, defaults to None
-        :type datatype: str | None, optional
-        :param usagecount: _description_, defaults to None
-        :type usagecount: int | None, optional
-        :param lastusagedate: _description_, defaults to None
-        :type lastusagedate: datetime | None, optional
-        :param creationtool: _description_, defaults to None
-        :type creationtool: str | None, optional
-        :param creationtoolversion: _description_, defaults to None
-        :type creationtoolversion: str | None, optional
-        :param creationdate: _description_, defaults to None
-        :type creationdate: datetime | None, optional
-        :param creationid: _description_, defaults to None
-        :type creationid: str | None, optional
-        :param changedate: _description_, defaults to None
-        :type changedate: datetime | None, optional
-        :param segtype: _description_, defaults to None
-        :type segtype: Literal[&quot;block&quot;, &quot;paragraph&quot;, &quot;sentence&quot;, &quot;phrase&quot;] | None, optional
-        :param changeid: _description_, defaults to None
-        :type changeid: str | None, optional
-        :param tmf: _description_, defaults to None
-        :type tmf: str | None, optional
-        :param srclang: _description_, defaults to None
-        :type srclang: str | None, optional
-        :param tuvs: _description_, defaults to None
-        :type tuvs: MutableSequence[Tuv] | None, optional
-        :param notes: _description_, defaults to None
-        :type notes: MutableSequence[Note] | None, optional
-        :param props: _description_, defaults to None
-        :type props: MutableSequence[Prop] | None, optional
-        """
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        self.lang = kwargs.get("lang", elem.get(f"{_xml_}lang"))
-        self.encoding = kwargs.get("encoding", elem.get("o-encoding"))
-        self.datatype = kwargs.get("datatype", elem.get("datatype"))
-        self.usagecount = kwargs.get("usagecount", elem.get("usagecount"))
-        self.lastusagedate = kwargs.get("lastusagedate", elem.get("lastusagedate"))
-        self.creationtool = kwargs.get("creationtool", elem.get("creationtool"))
-        self.creationtoolversion = kwargs.get(
-            "creationtoolversion", elem.get("creationtoolversion")
+        # Optional Attributes
+        self.tuid = tuid if tuid is not None else elem.get("tuid")
+        self.lang = (
+            lang
+            if lang is not None
+            else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
         )
-        self.creationdate = kwargs.get("creationdate", elem.get("creationdate"))
-        self.creationid = kwargs.get("creationid", elem.get("creationid"))
-        self.changedate = kwargs.get("changedate", elem.get("changedate"))
-        self.segtype = kwargs.get("segtype", elem.get("segtype"))
-        self.changeid = kwargs.get("changeid", elem.get("changeid"))
-        self.tmf = kwargs.get("tmf", elem.get("otmf"))
-        self.srclang = kwargs.get("srclang", elem.get("srclang"))
-        self.tuvs = kwargs.get(
-            "tuvs",
-            [Tuv(elem=child) for child in elem if child.tag == "tuv"],
+        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
+        self.datatype = datatype if datatype is not None else elem.get("datatype")
+        self.usagecount = (
+            usagecount if usagecount is not None else elem.get("usagecount")
         )
-        self.notes = kwargs.get(
-            "notes", [Note(elem=child) for child in elem if child.tag == "note"]
+        self.lastusagedate = (
+            lastusagedate if lastusagedate is not None else elem.get("lastusagedate")
         )
-        self.props = kwargs.get(
-            "props", [Prop(elem=child) for child in elem if child.tag == "prop"]
+        self.creationtool = (
+            creationtool if creationtool is not None else elem.get("creationtool")
         )
+        self.creationtoolversion = (
+            creationtoolversion
+            if creationtoolversion is not None
+            else elem.get("creationtoolversion")
+        )
+        self.creationdate = (
+            creationdate if creationdate is not None else elem.get("creationdate")
+        )
+        self.creationid = (
+            creationid if creationid is not None else elem.get("creationid")
+        )
+        self.changedate = (
+            changedate if changedate is not None else elem.get("changedate")
+        )
+        self.segtype = segtype if segtype is not None else elem.get("segtype")
+        self.changeid = changeid if changeid is not None else elem.get("changeid")
+        self.tmf = tmf if tmf is not None else elem.get("o-tmf")
+        self.srclang = srclang if srclang is not None else elem.get("srclang")
 
-        if isinstance(self.creationdate, str):
-            try:
-                self.creationdate = datetime.strptime(
-                    self.creationdate, r"%Y%m%dT%H%M%SZ"
-                )
-            except (TypeError, ValueError):
-                pass
-        if isinstance(self.changedate, str):
-            try:
-                self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
-            except (TypeError, ValueError):
-                pass
-        if isinstance(self.lastusagedate, str):
-            try:
-                self.lastusagedate = datetime.strptime(
-                    self.lastusagedate, r"%Y%m%dT%H%M%SZ"
-                )
-            except (TypeError, ValueError):
-                pass
-        if isinstance(self.usagecount, str):
-            try:
-                self.usagecount = int(self.usagecount)
-            except (TypeError, ValueError):
-                pass
+        # Try to coerce
+        try:
+            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")
+        except (TypeError, ValueError):
+            pass
+        try:
+            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
+        except (TypeError, ValueError):
+            pass
+        try:
+            self.lastusagedate = datetime.strptime(
+                self.lastusagedate, r"%Y%m%dT%H%M%SZ"
+            )
+        except (TypeError, ValueError):
+            pass
+        try:
+            self.usagecount = int(self.usagecount)
+        except (TypeError, ValueError):
+            pass
 
-    def to_element(self, force_str: bool = False) -> _Element:
+        # Sequence Attributes
+        if notes is None:
+            if len(elem):
+                self.notes = [
+                    Note(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "note"
+                ]
+            else:
+                self.notes = []
+        else:
+            self.notes = notes
+        if props is None:
+            if len(elem):
+                self.props = [
+                    Prop(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "prop"
+                ]
+            else:
+                self.props = []
+        else:
+            self.props = props
+        if tuvs is None:
+            if len(elem):
+                self.tuvs = [
+                    Tuv(elem=direct_child)
+                    for direct_child in elem
+                    if direct_child.tag == "tuv"
+                ]
+            else:
+                self.tuvs = []
+        else:
+            self.tuvs = tuvs
+
+    @override
+    def to_element(self):
         elem = Element("tu")
-        add_attrs(
-            elem,
-            {
-                key: val
-                for key, val in self.__dict__.items()
-                if not key.startswith(("__", "to", "prop", "note", "tuv"))
-            },
-            tuple(),
-            force_str,
-        )
-        elem.extend(
-            child.to_element()
-            for child in (*self.notes, *self.props, *self.tuvs)  # type: ignore
-        )
+
+        # Sequence Attributes
+        if len(self.notes):
+            elem.extend(note.to_element() for note in self.notes)
+        if len(self.props):
+            elem.extend(prop.to_element() for prop in self.props)
+
+        # Required Attributes
+        if self.tuvs is None:
+            raise AttributeError("Attribute 'tuvs' is required for Tu Elements")
+        if len(self.tuvs):
+            elem.extend(tuv.to_element() for tuv in self.tuvs)
+
+        # Optional Attributes
+        if self.tuid is not None:
+            elem.set("tuid", self.tuid)
+        if self.lang is not None:
+            elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
+        if self.datatype is not None:
+            elem.set("datatype", self.datatype)
+        if self.usagecount is not None:
+            if isinstance(self.usagecount, int):
+                elem.set("usagecount", str(self.usagecount))
+            else:
+                elem.set("usagecount", self.usagecount)
+        if self.lastusagedate is not None:
+            if isinstance(self.lastusagedate, datetime):
+                elem.set(
+                    "lastusagedate", self.lastusagedate.strftime(r"%Y%m%dT%H%M%SZ")
+                )
+            else:
+                elem.set("lastusagedate", self.lastusagedate)
+        if self.creationtool is not None:
+            elem.set("creationtool", self.creationtool)
+        if self.creationtoolversion is not None:
+            elem.set("creationtoolversion", self.creationtoolversion)
+        if self.creationdate is not None:
+            if isinstance(self.creationdate, datetime):
+                elem.set("creationdate", self.creationdate.strftime(r"%Y%m%dT%H%M%SZ"))
+            else:
+                elem.set("creationdate", self.creationdate)
+        if self.creationid is not None:
+            elem.set("creationid", self.creationid)
+        if self.changedate is not None:
+            if isinstance(self.changedate, datetime):
+                elem.set("changedate", self.changedate.strftime(r"%Y%m%dT%H%M%SZ"))
+            else:
+                elem.set("changedate", self.changedate)
+        if self.changeid is not None:
+            elem.set("changeid", self.changeid)
+        if self.segtype is not None:
+            if self.segtype.lower() not in ("block", "paragraph", "sentence", "phrase"):
+                raise AttributeError(
+                    "Attribute 'segtype' must be one of"
+                    '"block", "paragraph", "sentence", "phrase"'
+                    f"but got {self.segtype.lower()}"
+                )
+            elem.set("segtype", self.segtype.lower())
+        if self.tmf is not None:
+            elem.set("o-tmf", self.tmf)
+        if self.srclang is not None:
+            elem.set("srclang", self.srclang)
         return elem
 
 
@@ -715,33 +805,17 @@ class Tmx:
     header: Header
     tus: MutableSequence[Tu]
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
-    def __init__(self, *, header: Header, tus: MutableSequence[Tu]) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...
+    def __init__(
+        self, *, elem: _Element | None = None, header: Header, tus: MutableSequence[Tu]
+    ) -> None:
+        elem = elem if elem is not None else _empty_elem_
+        self._source_elem = elem if elem is not _empty_elem_ else None
+        self.header = header if header is not None else Header(elem=elem.find("header"))
+        if tus is None:
+            if (body := elem.find("body")) is not None and len(body):
+                self.tus.extend(Tu(elem=tu) for tu in body if tu.tag == "tu")
 
-    def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param header: _description_
-        :type header: Header
-        :param tus: _description_
-        :type tus: MutableSequence[Tu]
-        """
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        self.header = kwargs.get("header", Header(elem=elem.find("header")))
-        if "tus" in kwargs:
-            self.tus = kwargs["tus"]
-        else:
-            if (body := elem.find("body")) is not None:
-                self.tus = [Tu(elem=child) for child in body if child.tag == "tu"]
-            else:
-                self.tus = []
-
-    def to_element(self, force_str: bool = False) -> _Element:
+    def to_element(self) -> _Element:
         elem = Element("tmx")
         elem.set("version", "1.4")
         body = Element("body")

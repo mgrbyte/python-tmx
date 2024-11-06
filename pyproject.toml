@@ -26,3 +26,6 @@ dev = ["mypy", "types-lxml", "setuptools"]
 [project.urls]
 Homepage = "https://github.com/ChonkyYoshi/python-tmx"
 Issues = "https://github.com/ChonkyYoshi/python-tmx/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
