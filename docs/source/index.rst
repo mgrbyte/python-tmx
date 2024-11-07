@@ -5,8 +5,11 @@ Welcome to Project's documentation!
    :maxdepth: 4
    :caption: Contents:
 
-   modules
-
+.. automodule:: structural
+   :members:
+   :no-show-inheritance:
+   :special-members: __iter__,__len__
+   :exclude-members: Structural
 
 Indices and tables
 ==================

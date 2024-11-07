@@ -4,8 +4,7 @@ from typing import Literal, MutableSequence, overload
 
 from lxml.etree import Element, _Element
 from typing_extensions import deprecated
-
-from .utils import add_attrs
+from utils import add_attrs
 
 _EmptyElem_ = Element("empty")
 
@@ -13,14 +12,6 @@ _EmptyElem_ = Element("empty")
 def _parse_inline(
     elem: _Element | None,
 ) -> MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] | str:
-    """
-    _summary_
-
-    :param elem: _description_
-    :type elem: _Element | None
-    :return: _description_
-    :rtype: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] | str
-    """
     result: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] = []
     if elem is None:
         return result
@@ -72,18 +63,6 @@ class Bpt:
     def __init__(self, **kwargs) -> None: ...
 
     def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param content: _description_
-        :type content: str
-        :param i: _description_
-        :type i: int
-        :param x: _description_, defaults to None
-        :type x: int | None, optional
-        :param type: _description_, defaults to None
-        :type type: str | None, optional
-        """
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.i = kwargs.get("i", elem.get("i"))
@@ -144,14 +123,6 @@ class Ept:
     def __init__(self, **kwargs) -> None: ...
 
     def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param content: _description_
-        :type content: str
-        :param i: _description_, defaults to None
-        :type i: int | None, optional
-        """
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.i = kwargs.get("i", elem.get("i"))
@@ -207,16 +178,6 @@ class Hi:
     def __init__(self, **kwargs) -> None: ...
 
     def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param content: _description_
-        :type content: str
-        :param x: _description_, defaults to None
-        :type x: int | None, optional
-        :param type: _description_, defaults to None
-        :type type: str | None, optional
-        """
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.type = kwargs.get("type", elem.get("type"))
@@ -275,18 +236,6 @@ class It:
     def __init__(self, **kwargs) -> None: ...
 
     def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param content: _description_
-        :type content: str
-        :param pos: _description_
-        :type pos: Literal[&quot;begin&quot;, &quot;end&quot;]
-        :param x: _description_, defaults to None
-        :type x: int | None, optional
-        :param type: _description_, defaults to None
-        :type type: str | None, optional
-        """
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.pos = kwargs.get("pos", elem.get("pos"))
@@ -346,18 +295,6 @@ class Ph:
     def __init__(self, **kwargs) -> None: ...
 
     def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param content: _description_
-        :type content: str
-        :param x: _description_, defaults to None
-        :type x: int | None, optional
-        :param type: _description_, defaults to None
-        :type type: str | None, optional
-        :param assoc: _description_, defaults to None
-        :type assoc: Literal[&quot;p&quot;, &quot;f&quot;, &quot;b&quot;] | None, optional
-        """
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.x = kwargs.get("x", elem.get("x"))
@@ -415,16 +352,6 @@ class Sub:
     def __init__(self, **kwargs) -> None: ...
 
     def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param content: _description_
-        :type content: str
-        :param type: _description_, defaults to None
-        :type type: str | None, optional
-        :param datatype: _description_, defaults to None
-        :type datatype: str | None, optional
-        """
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.type = kwargs.get("type", elem.get("type"))
@@ -479,14 +406,6 @@ class Ut:
     def __init__(self, **kwargs) -> None: ...
 
     def __init__(self, **kwargs) -> None:
-        """
-        _summary_
-
-        :param content: _description_
-        :type content: str
-        :param x: _description_, defaults to None
-        :type x: int | None, optional
-        """
         elem: _Element = kwargs.get("elem", _EmptyElem_)
         self.content = kwargs.get("content", _parse_inline(elem=elem))
         self.x = kwargs.get("x", elem.get("x"))

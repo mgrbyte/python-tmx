@@ -9,9 +9,6 @@ _xml_ = r"{http://www.w3.org/XML/1998/namespace}"
 def add_attrs(
     elem: _Element, attrs: dict[str, Any], req: tuple[str, ...], force_str: bool = False
 ) -> None:
-    """
-    Please???????????????????????????????????????????????????????????????????????????????
-    """
     for key, val in attrs.items():
         if val is None:
             if key in req:
@@ -146,22 +143,3 @@ def add_attrs(
                     f"but got {key.lower()}"
                 )
             elem.set(key, val.lower())
-
-
-def initialise_logger(output_file, mode) -> None:
-    """
-    Setup logging to console and file simultanenously. The process is described here:
-    Logging to Console and File In Python
-
-    :param output_file: log file to use. Frequently we set this to:
-    .. highlight:: python
-    .. code-block:: python
-
-            logname = __file__.replace("./", "").replace(".py", "")
-            os.path.join("logs", "{}.log".format(logname))
-
-    :param mode: `both` or `file only` selects whether output is sent to file and console, or file only
-
-    :return: No return value
-    """
-    ...
