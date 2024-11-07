@@ -20,7 +20,8 @@ classifiers = [
 dependencies = ["lxml"]
 
 [project.optional-dependencies]
-dev = ["mypy", "types-lxml", "setuptools"]
+dev = ["lxml-stubs"]
+docs = ["sphinx", "mypy","sphinxawesome-theme"]
 
 
 [project.urls]

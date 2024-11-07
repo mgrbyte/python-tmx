@@ -1,12 +1,21 @@
 from datetime import datetime
-from typing import Literal, MutableSequence, override
+from typing import Any, Literal, MutableSequence, Protocol, Self, override
 
-from lxml.etree import Element, SubElement, _Element
+from lxml.etree import Element, SubElement
 
 from .inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
 
-_xml_ = r"{http://www.w3.org/XML/1998/namespace}"
 _empty_elem_ = Element("empty")
+
+
+class XmlElementLike(Protocol):
+    tag: str
+    text: str | None
+    tail: str | None
+
+    def get(self, key: str, default: Any) -> Any: ...
+    def __iter__(self) -> Self: ...
+    def __len__(self) -> int: ...
 
 
 class Structural:
@@ -15,7 +24,7 @@ class Structural:
     Not meant to be instantiated.
     """
 
-    _source_elem: _Element | None
+    _source_elem: XmlElementLike | None
 
     def __init__(self):
         raise NotImplementedError
@@ -33,7 +42,7 @@ class Map(Structural):
     def __init__(
         self,
         *,
-        elem: _Element | None = None,
+        elem: XmlElementLike | None = None,
         unicode: str | None = None,
         code: str | None = None,
         ent: str | None = None,
@@ -77,7 +86,7 @@ class Ude:
     def __init__(
         self,
         *,
-        elem: _Element | None = None,
+        elem: XmlElementLike | None = None,
         name: str | None = None,
         base: str | None | None = None,
         maps: MutableSequence[Map] | None = None,
@@ -137,7 +146,7 @@ class Note:
     def __init__(
         self,
         *,
-        elem: _Element | None = None,
+        elem: XmlElementLike | None = None,
         text: str | None = None,
         lang: str | None = None,
         encoding: str | None = None,
@@ -182,7 +191,7 @@ class Prop:
     def __init__(
         self,
         *,
-        elem: _Element | None = None,
+        elem: XmlElementLike | None = None,
         text: str | None = None,
         type: str | None = None,
         lang: str | None = None,
@@ -224,6 +233,39 @@ class Prop:
 
 
 class Header:
+    """This is a conceptual class representation of a simple BLE device
+    (GATT Server). It is essentially an extended combination of the
+    :class:`bluepy.btle.Peripheral` and :class:`bluepy.btle.ScanEntry` classes
+
+    :param client: A handle to the :class:`simpleble.SimpleBleClient` client
+        object that detected the device
+    :type client: class:`simpleble.SimpleBleClient`
+    :param addr: Device MAC address, defaults to None
+    :type addr: str, optional
+    :param addrType: Device address type - one of ADDR_TYPE_PUBLIC or
+        ADDR_TYPE_RANDOM, defaults to ADDR_TYPE_PUBLIC
+    :type addrType: str, optional
+    :param iface: Bluetooth interface number (0 = /dev/hci0) used for the
+        connection, defaults to 0
+    :type iface: int, optional
+    :param data: A list of tuples (adtype, description, value) containing the
+        AD type code, human-readable description and value for all available
+        advertising data items, defaults to None
+    :type data: list, optional
+    :param rssi: Received Signal Strength Indication for the last received
+        broadcast from the device. This is an integer value measured in dB,
+        where 0 dB is the maximum (theoretical) signal strength, and more
+        negative numbers indicate a weaker signal, defaults to 0
+    :type rssi: int, optional
+    :param connectable: `True` if the device supports connections, and `False`
+        otherwise (typically used for advertising ‘beacons’).,
+        defaults to `False`
+    :type connectable: bool, optional
+    :param updateCount: Integer count of the number of advertising packets
+        received from the device so far, defaults to 0
+    :type updateCount: int, optional
+    """
+
     creationtool: str
     creationtoolversion: str
     segtype: Literal["block", "paragraph", "sentence", "phrase"]
@@ -243,7 +285,7 @@ class Header:
     def __init__(
         self,
         *,
-        elem: _Element | None = None,
+        elem: XmlElementLike | None = None,
         creationtool: str | None = None,
         creationtoolversion: str | None = None,
         segtype: Literal["block", "paragraph", "sentence", "phrase"] | None = None,
@@ -260,6 +302,7 @@ class Header:
         props: MutableSequence[Prop] | None = None,
         udes: MutableSequence[Ude] | None = None,
     ) -> None:
+        """Constructor method"""
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
 
@@ -335,8 +378,21 @@ class Header:
         except (TypeError, ValueError):
             pass
 
-    @override
     def to_element(self):
+        """
+        Returns a list of :class:`bluepy.blte.Service` objects representing
+        the services offered by the device. This will perform Bluetooth service
+        discovery if this has not already been done; otherwise it will return a
+        cached list of services immediately..
+
+        :param uuids: A list of string service UUIDs to be discovered,
+        defaults to None
+        :type uuids: list, optional
+        :return: A list of the discovered :class:`bluepy.blte.Service` objects,
+        which match the provided ``uuids``
+        :rtype: list On Python 3.x, this returns a dictionary view object,
+        not a list
+        """
         elem = Element("header")
 
         # Required Attributes
@@ -422,7 +478,7 @@ class Tuv:
     def __init__(
         self,
         *,
-        elem: _Element | None = None,
+        elem: XmlElementLike | None = None,
         segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut]
         | str
         | None = None,
@@ -616,7 +672,7 @@ class Tu:
     def __init__(
         self,
         *,
-        elem: _Element | None = None,
+        elem: XmlElementLike | None = None,
         tuid: str | None = None,
         lang: str | None = None,
         encoding: str | None = None,
@@ -806,7 +862,11 @@ class Tmx:
     tus: MutableSequence[Tu]
 
     def __init__(
-        self, *, elem: _Element | None = None, header: Header, tus: MutableSequence[Tu]
+        self,
+        *,
+        elem: XmlElementLike | None = None,
+        header: Header,
+        tus: MutableSequence[Tu],
     ) -> None:
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
@@ -815,7 +875,7 @@ class Tmx:
             if (body := elem.find("body")) is not None and len(body):
                 self.tus.extend(Tu(elem=tu) for tu in body if tu.tag == "tu")
 
-    def to_element(self) -> _Element:
+    def to_element(self) -> XmlElementLike:
         elem = Element("tmx")
         elem.set("version", "1.4")
         body = SubElement(elem, "body")
