@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, MutableSequence, override
 
-from lxml.etree import Element, _Element
+from lxml.etree import Element, SubElement, _Element
 
 from .inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
 
@@ -818,12 +818,11 @@ class Tmx:
     def to_element(self) -> _Element:
         elem = Element("tmx")
         elem.set("version", "1.4")
-        body = Element("body")
+        body = SubElement(elem, "body")
         if self.header is None:
             raise AttributeError(
                 "The 'header' attribute of the Tmx element cannot be None"
             )
         elem.append(self.header.to_element())
         body.extend(tu.to_element() for tu in self.tus)
-        elem.append(body)
         return elem
