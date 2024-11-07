@@ -29,6 +29,8 @@ class Structural:
     Not meant to be instantiated.
     """
 
+    __slots__ = ("_source_elem",)
+
     _source_elem: XmlElementLike | None
 
     def __init__(self):
@@ -39,6 +41,41 @@ class Structural:
 
 
 class Map(Structural):
+    """
+    *Map* - The ``Map`` element is used to specify a user-defined character
+    and some of its properties.
+
+    Parameters
+    ----------
+    elem : XmlElementLike | None, optional
+        An xml Element object to parse.
+        Any attribute value that's not in one of the ``__slots__``
+        will be ignored.
+        Values from the keyword arguments will override the values parsed.
+        If not None, gets stored inside the ``_source_elem`` private
+        attribute if needed.
+        Defaults to None
+    unicode : str
+        The Unicode character value of the character.
+        Its value must be a valid Unicode value (including values in the
+        Private Use areas) in hexadecimal format.
+        For example: unicode="#xF8FF".
+    code : str | None, optional
+        The code-point value corresponding to the unicode character.
+        Hexadecimal value prefixed with "#x". For example: code="#x9F".
+        Defaults to None.
+    ent : str | None, optional
+        The entity name of the character.
+        Text in ASCII. For example: ent="copy".
+        Defaults to None
+    subst : str | None, optional
+        Alternative string for the character.
+        A text in ASCII. For example: subst="(c)" for the copyright sign.
+        Defaults to None
+    """
+
+    __slots__ = ("unicode", "code", "ent", "subst")
+
     unicode: str
     code: str | None
     ent: str | None
@@ -53,6 +90,9 @@ class Map(Structural):
         ent: str | None = None,
         subst: str | None = None,
     ) -> None:
+        """
+        Constructor
+        """
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
 
