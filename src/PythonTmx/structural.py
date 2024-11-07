@@ -146,6 +146,33 @@ class Map(Structural):
 
 
 class Ude:
+    """
+    *User-Defined Encoding* - The ``Ude`` element is used to specify a
+    set of user-defined characters and/or, optionally their mapping
+    from Unicode to the user-defined encoding.
+
+    Required Attributes
+    -------------------
+    name — str
+        Name of the element, its value is not defined by the standard,
+        but tools providers should publish the values they use.
+
+    Optional Attributes
+    -------------------
+    elem — XmlElementLike | None, Defaults to None
+        An xml Element object to parse.
+        Any attribute value that's not in one of the ``__slots__``
+        will be ignored.
+        Values from the keyword arguments will override the values parsed.
+        If not None, gets stored inside the ``_source_elem`` private
+        attribute if needed.
+    base — str | None | None, Defaults to None
+        The encoding upon which the re-mapping of the element is based
+    maps — MutableSequence[Map] | None, Defaults to ``[]``
+        An array of `Map` objects represents all the custom mappings for the
+        encoding.
+    """
+
     __slots__ = "name", "base", "maps"
     name: str
     base: str | None
@@ -159,27 +186,7 @@ class Ude:
         base: str | None | None = None,
         maps: MutableSequence[Map] | None = None,
     ) -> None:
-        """
-        _summary_
-
-        Required Attributes
-        -------------------
-
-        Optional Attributes
-        -------------------
-        elem — XmlElementLike | None, Defaults to None
-            _description_
-        name — str | None, Defaults to None
-            _description_
-        base — str | None | None, Defaults to None
-            _description_
-        maps — MutableSequence[Map] | None, Defaults to None
-            _description_
-
-
-
-
-        """
+        """Constructor"""
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
 

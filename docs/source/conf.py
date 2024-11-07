@@ -30,4 +30,3 @@ exclude_patterns = []
 html_permalinks_icon = "<span>#</span>"
 html_theme = "sphinxawesome_theme"
 html_static_path = ["_static"]
-# napoleon_include_init_with_doc = True
