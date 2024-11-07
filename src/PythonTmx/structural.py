@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Literal, MutableSequence, Protocol, Self, override
 
 from inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
-from lxml.etree import Element, SubElement
+from lxml.etree import Element, SubElement, _Element
 
 _empty_elem_ = Element("empty")
 
@@ -37,6 +37,29 @@ class Structural:
         raise NotImplementedError
 
     def to_element(self):
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        requried attribtues are present, skipping any optional attributes with
+        a value of `None`, converting `int` and `datetime` objects to str and
+        changing the attribute name to make the resulting _Element spec-compliant
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying a value is not a `str`
+        ValueError
+            Raised if attributes with restricted value like `segtype` have an
+            incorrect value
+
+        Warns
+        -----
+        UserWarning
+            Thrown when the value for a `datetime` parameter that supports
+            `datetime` objects is a `str` but doesn't match the YYYYMMDDTHHMMSSZ
+            format.
+        """
         raise NotImplementedError
 
 
@@ -45,36 +68,35 @@ class Map(Structural):
     *Map* - The ``Map`` element is used to specify a user-defined character
     and some of its properties.
 
-    Parameters
-    ----------
-    elem : XmlElementLike | None, optional
+    Required Attributes
+    -------------------
+    unicode — str
+        The Unicode character value of the character.
+        Its value must be a valid Unicode value (including values in the
+        Private Use areas) in hexadecimal format.
+        For example: unicode="#xF8FF".
+
+    Optional Attributes
+    -------------------
+    elem — XmlElementLike | None, Defaults to None
         An xml Element object to parse.
         Any attribute value that's not in one of the ``__slots__``
         will be ignored.
         Values from the keyword arguments will override the values parsed.
         If not None, gets stored inside the ``_source_elem`` private
         attribute if needed.
-        Defaults to None
-    unicode : str
-        The Unicode character value of the character.
-        Its value must be a valid Unicode value (including values in the
-        Private Use areas) in hexadecimal format.
-        For example: unicode="#xF8FF".
-    code : str | None, optional
+    code — str | None, Defaults to None
         The code-point value corresponding to the unicode character.
         Hexadecimal value prefixed with "#x". For example: code="#x9F".
-        Defaults to None.
-    ent : str | None, optional
+    ent — str | None, Defaults to None
         The entity name of the character.
         Text in ASCII. For example: ent="copy".
-        Defaults to None
-    subst : str | None, optional
+    subst — str | None, Defaults to None
         Alternative string for the character.
         A text in ASCII. For example: subst="(c)" for the copyright sign.
-        Defaults to None
     """
 
-    __slots__ = ("unicode", "code", "ent", "subst")
+    __slots__ = "unicode", "code", "ent", "subst"
 
     unicode: str
     code: str | None
@@ -91,7 +113,7 @@ class Map(Structural):
         subst: str | None = None,
     ) -> None:
         """
-        Constructor
+        Constructor method
         """
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
@@ -106,7 +128,7 @@ class Map(Structural):
 
     @override
     def to_element(self):
-        elem = Element("map")
+        elem: _Element = Element("map")
 
         # Required Attributes
         if self.unicode is None:
@@ -124,6 +146,7 @@ class Map(Structural):
 
 
 class Ude:
+    __slots__ = "name", "base", "maps"
     name: str
     base: str | None
     maps: MutableSequence[Map]
@@ -136,6 +159,27 @@ class Ude:
         base: str | None | None = None,
         maps: MutableSequence[Map] | None = None,
     ) -> None:
+        """
+        _summary_
+
+        Required Attributes
+        -------------------
+
+        Optional Attributes
+        -------------------
+        elem — XmlElementLike | None, Defaults to None
+            _description_
+        name — str | None, Defaults to None
+            _description_
+        base — str | None | None, Defaults to None
+            _description_
+        maps — MutableSequence[Map] | None, Defaults to None
+            _description_
+
+
+
+
+        """
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
 
@@ -160,7 +204,7 @@ class Ude:
 
     @override
     def to_element(self):
-        elem = Element("ude")
+        elem: _Element = Element("ude")
 
         # Required Attributes
         if self.name is None:
@@ -212,7 +256,7 @@ class Note:
 
     @override
     def to_element(self):
-        elem = Element("note")
+        elem: _Element = Element("note")
 
         # Required Attributes
         if self.text is None:
@@ -259,7 +303,7 @@ class Prop:
 
     @override
     def to_element(self):
-        elem = Element("prop")
+        elem: _Element = Element("prop")
 
         # Required Attributes
         if self.text is None:
@@ -391,7 +435,7 @@ class Header:
             pass
 
     def to_element(self):
-        elem = Element("header")
+        elem: _Element = Element("header")
 
         # Required Attributes
         if self.creationtool is None:
@@ -581,7 +625,7 @@ class Tuv:
 
     @override
     def to_element(self):
-        elem = Element("tuv")
+        elem: _Element = Element("tuv")
 
         # Sequence Attributes
         if len(self.notes):
@@ -789,7 +833,7 @@ class Tu:
 
     @override
     def to_element(self):
-        elem = Element("tu")
+        elem: _Element = Element("tu")
 
         # Sequence Attributes
         if len(self.notes):
@@ -874,7 +918,7 @@ class Tmx:
                 self.tus.extend(Tu(elem=tu) for tu in body if tu.tag == "tu")
 
     def to_element(self) -> XmlElementLike:
-        elem = Element("tmx")
+        elem: _Element = Element("tmx")
         elem.set("version", "1.4")
         body = SubElement(elem, "body")
         if self.header is None:

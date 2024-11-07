@@ -1,0 +1,45 @@
+{{! PythonTmx Template }}
+{{summaryPlaceholder}}
+
+{{#parametersExist}}
+Required Attributes
+-------------------
+{{#args}}
+{{var}} — {{typePlaceholder}}
+    {{descriptionPlaceholder}}
+{{/args}}
+
+Optional Attributes
+-------------------
+{{#kwargs}}
+{{var}} — {{typePlaceholder}}, Defaults to None
+    {{descriptionPlaceholder}}
+{{/kwargs}}
+{{/parametersExist}}
+
+{{#exceptionsExist}}
+Raises
+------
+{{#exceptions}}
+{{type}}
+    {{descriptionPlaceholder}}
+{{/exceptions}}
+{{/exceptionsExist}}
+
+
+{{#returnsExist}}
+Returns
+-------
+{{#returns}}
+{{typePlaceholder}}
+    {{descriptionPlaceholder}}
+{{/returns}}
+{{/returnsExist}}
+
+{{#yieldsExist}}
+Yields:
+{{#yields}}
+{{typePlaceholder}}
+    {{descriptionPlaceholder}}
+{{/yields}}
+{{/yieldsExist}}
