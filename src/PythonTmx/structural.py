@@ -36,30 +36,7 @@ class Structural:
     def __init__(self):
         raise NotImplementedError
 
-    def to_element(self):
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        requried attribtues are present, skipping any optional attributes with
-        a value of `None`, converting `int` and `datetime` objects to str and
-        changing the attribute name to make the resulting _Element spec-compliant
-
-        Raises
-        ------
-        AttributeError
-            Raised in any required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying a value is not a `str`
-        ValueError
-            Raised if attributes with restricted value like `segtype` have an
-            incorrect value
-
-        Warns
-        -----
-        UserWarning
-            Thrown when the value for a `datetime` parameter that supports
-            `datetime` objects is a `str` but doesn't match the YYYYMMDDTHHMMSSZ
-            format.
-        """
+    def to_element(self) -> _Element:
         raise NotImplementedError
 
 
@@ -78,13 +55,6 @@ class Map(Structural):
 
     Optional Attributes
     -------------------
-    elem — XmlElementLike | None, Defaults to None
-        An xml Element object to parse.
-        Any attribute value that's not in one of the ``__slots__``
-        will be ignored.
-        Values from the keyword arguments will override the values parsed.
-        If not None, gets stored inside the ``_source_elem`` private
-        attribute if needed.
     code — str | None, Defaults to None
         The code-point value corresponding to the unicode character.
         Hexadecimal value prefixed with "#x". For example: code="#x9F".
@@ -127,7 +97,25 @@ class Map(Structural):
         self.subst = subst if subst is not None else elem.get("subst")
 
     @override
-    def to_element(self):
+    def to_element(self) -> _Element:
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        requried attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        """
         elem: _Element = Element("map")
 
         # Required Attributes
@@ -147,7 +135,7 @@ class Map(Structural):
 
 class Ude:
     """
-    *User-Defined Encoding* - The ``Ude`` element is used to specify a
+    *User-Defined Encoding* — The *Ude* element is used to specify a
     set of user-defined characters and/or, optionally their mapping
     from Unicode to the user-defined encoding.
 
@@ -159,17 +147,12 @@ class Ude:
 
     Optional Attributes
     -------------------
-    elem — XmlElementLike | None, Defaults to None
-        An xml Element object to parse.
-        Any attribute value that's not in one of the ``__slots__``
-        will be ignored.
-        Values from the keyword arguments will override the values parsed.
-        If not None, gets stored inside the ``_source_elem`` private
-        attribute if needed.
     base — str | None | None, Defaults to None
-        The encoding upon which the re-mapping of the element is based
+        The encoding upon which the re-mapping of the element is based.
+        Note that `base` is required if at least 1 one of the :class:`Map`
+        has a value set for its ``code`` attribute.
     maps — MutableSequence[Map] | None, Defaults to ``[]``
-        An array of `Map` objects represents all the custom mappings for the
+        An array of :class:`Map` objects represents all the custom mappings for the
         encoding.
     """
 
@@ -211,6 +194,26 @@ class Ude:
 
     @override
     def to_element(self):
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        requried attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+        Will recursively call :func:`Map.to_element()` on all the :class:`Map`
+        elements and append them to the main Ude element before returning.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        """
         elem: _Element = Element("ude")
 
         # Required Attributes
@@ -236,7 +239,11 @@ class Ude:
 
 class Note:
     """
-    *Note* - The ``Note`` element is used for comments.
+    *Note* — The ``Note`` element is used for comments.
+
+    Contrary to the :class:`Prop`, the *Note* Element is meant only to have text.
+    It serves the same purpose as a basic code comment, providing context and
+    additional info to the user reagrding its parent.
 
     Required Attributes
     -------------------
@@ -245,13 +252,6 @@ class Note:
 
     Optional Attributes
     -------------------
-    elem — XmlElementLike | None, Defaults to None
-        An xml Element object to parse.
-        Any attribute value that's not in one of the ``__slots__``
-        will be ignored.
-        Values from the keyword arguments will override the values parsed.
-        If not None, gets stored inside the ``_source_elem`` private
-        attribute if needed.
     lang — str | None, Defaults to None
         The locale of the text of a given element.
         A language code as described in the [RFC 3066].
@@ -298,6 +298,24 @@ class Note:
 
     @override
     def to_element(self):
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        requried attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        """
         elem: _Element = Element("note")
 
         # Required Attributes
