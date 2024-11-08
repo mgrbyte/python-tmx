@@ -349,6 +349,7 @@ class Prop:
     type — str
         The kind of data the element represents. By convention, values always
         preppended with "x-" such as ``type="x-domain"``
+
     Optional Attributes
     -------------------
     lang — str | None, Defaults to None
@@ -1031,6 +1032,10 @@ class Tmx:
         if tus is None:
             if (body := elem.find("body")) is not None and len(body):
                 self.tus.extend(Tu(elem=tu) for tu in body if tu.tag == "tu")
+            else:
+                self.tus = []
+        else:
+            self.tus = []
 
     def to_element(self) -> XmlElementLike:
         elem: _Element = Element("tmx")
