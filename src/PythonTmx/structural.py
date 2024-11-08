@@ -147,7 +147,7 @@ class Ude:
 
     Optional Attributes
     -------------------
-    base — str | None | None, Defaults to None
+    base — str | None, Defaults to None
         The encoding upon which the re-mapping of the element is based.
         Note that `base` is required if at least 1 one of the :class:`Map`
         has a value set for its ``code`` attribute.
@@ -166,7 +166,7 @@ class Ude:
         *,
         elem: XmlElementLike | None = None,
         name: str | None = None,
-        base: str | None | None = None,
+        base: str | None = None,
         maps: MutableSequence[Map] | None = None,
     ) -> None:
         """Constructor"""
@@ -438,6 +438,82 @@ class Prop:
 
 
 class Header:
+    """
+    `File header` - Contains information pertaining to the whole document.
+
+    Required Attributes
+    -------------------
+    creationtool — str
+        The tool that created the TMX document.
+        Its possible values are not specified by the standard but
+        each tool provider should publish the string identifier it uses.
+    creationtoolversion — str
+        The version of the tool that created the TMX document.
+        Its possible values are not specified by the standard but each tool
+        provider should publish the string identifier it uses.
+    segtype — Literal["block", "paragraph", "sentence", "phrase"]
+        The default kind of segmentation used throughout the document.
+        If a :class:`Tu` does not have a segtype attribute specified,
+        it uses the one defined in the `Header` element.
+        The "block" value is used when the segment does not correspond
+        to one of the other values.
+        A TMX file can include sentence level segmentation for
+        maximum portability, so it is recommended that you use such
+        segmentation rather than a specific, proprietary method.
+        The rules on how the text was segmented can be carried in a
+        Segmentation Rules eXchange (SRX) document.
+        One of "block", "paragraph", "sentence", or "phrase".
+    tmf — str
+        The format of the translation memory file from which the TMX
+        document or segment thereof have been generated.
+    adminlang — str
+        The default language for the administrative and informative elements
+        :class:`Note` and :class:`Prop`.
+        A language code as described in the [RFC 3066].
+        Unlike the other TMX attributes, the values for adminlang
+        are not case-sensitive.
+    srclang — str
+        The language of the source text.
+        In other words, the :class:`Tuv` holding the source segment
+        will have its `xml:lang` attribute set to the same value as srclang.
+        If a :class:`Tu` element does not have a srclang attribute specified,
+        it uses the one defined in the :class:`Header` element.
+    datatype — str
+        The type of data contained in the element.
+        Depending on that type, you may apply different processes to the data.
+
+    Optional Attributes
+    -------------------
+    encoding — str | None, Defaults to None
+        The original or preferred code set of the data of the element
+        in case it is to be re-encoded in a non-Unicode code set.
+        One of the [IANA] recommended "charset identifier", if possible.
+    creationdate — datetime | str | None, Defaults to None
+        The date of creation of the element.
+        Date in [ISO 8601] Format. The recommended pattern to use is:
+        "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
+        MM is the month (2 digits), DD is the day (2 digits),
+        hh is the hours (2 digits), mm is the minutes (2 digits),
+        ss is the second (2 digits), and Z indicates the time is UTC time.
+    creationid — str | None, Defaults to None
+        The identifier of the user who created the element
+    changedate — datetime | None, Defaults to None
+        The date of the last modification of the element.
+        Date in [ISO 8601] Format. The recommended pattern to use is:
+        "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
+        MM is the month (2 digits), DD is the day (2 digits),
+        hh is the hours (2 digits), mm is the minutes (2 digits),
+        ss is the second (2 digits), and Z indicates the time is UTC time.
+    changeid — str | None, Defaults to None
+        The identifier of the user who modified the element last.
+    notes — MutableSequence[Note] | None, Defaults to None
+        An array of :class:`Note` objects
+    props — MutableSequence[Prop] | None, Defaults to None
+        An array of :class:`Prop` objects
+    udes — MutableSequence[Ude] | None, Defaults to None
+        An array of :class:`Ude` objects
+    """
+
     creationtool: str
     creationtoolversion: str
     segtype: Literal["block", "paragraph", "sentence", "phrase"]
@@ -454,6 +530,24 @@ class Header:
     props: MutableSequence[Prop]
     udes: MutableSequence[Ude]
 
+    __slots__ = (
+        "creationtool",
+        "creationtoolversion",
+        "segtype",
+        "tmf",
+        "adminlang",
+        "srclang",
+        "datatype",
+        "encoding",
+        "creationdate",
+        "creationid",
+        "changedate",
+        "changeid",
+        "notes",
+        "props",
+        "udes",
+    )
+
     def __init__(
         self,
         *,
@@ -465,11 +559,11 @@ class Header:
         adminlang: str | None = None,
         srclang: str | None = None,
         datatype: str | None = None,
-        encoding: str | None | None = None,
-        creationdate: datetime | None | None = None,
-        creationid: str | None | None = None,
-        changedate: datetime | None | None = None,
-        changeid: str | None | None = None,
+        encoding: str | None = None,
+        creationdate: str | datetime | None = None,
+        creationid: str | None = None,
+        changedate: str | datetime | None = None,
+        changeid: str | None = None,
         notes: MutableSequence[Note] | None = None,
         props: MutableSequence[Prop] | None = None,
         udes: MutableSequence[Ude] | None = None,
@@ -644,12 +738,12 @@ class Tuv:
         encoding: str | None = None,
         datatype: str | None = None,
         usagecount: int | None = None,
-        lastusagedate: datetime | None = None,
+        lastusagedate: str | datetime | None = None,
         creationtool: str | None = None,
         creationtoolversion: str | None = None,
-        creationdate: datetime | None = None,
+        creationdate: str | datetime | None = None,
         creationid: str | None = None,
-        changedate: datetime | None = None,
+        changedate: str | datetime | None = None,
         changeid: str | None = None,
         tmf: str | None = None,
         notes: MutableSequence[Note] | None = None,
@@ -836,12 +930,12 @@ class Tu:
         encoding: str | None = None,
         datatype: str | None = None,
         usagecount: int | None = None,
-        lastusagedate: datetime | None = None,
+        lastusagedate: str | datetime | None = None,
         creationtool: str | None = None,
         creationtoolversion: str | None = None,
-        creationdate: datetime | None = None,
+        creationdate: str | datetime | None = None,
         creationid: str | None = None,
-        changedate: datetime | None = None,
+        changedate: str | datetime | None = None,
         segtype: Literal["block", "paragraph", "sentence", "phrase"] | None = None,
         changeid: str | None = None,
         tmf: str | None = None,
