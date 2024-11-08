@@ -9,10 +9,6 @@ build:
   os: ubuntu-lts-latest
   tools:
     python: latest
-  commands:
-    - pip install .[docs]
-    - mkdir -p $READTHEDOCS_OUTPUT
-    - sphinx-build -M html docs/source docs/$READTHEDOCS_OUTPUT
   
 
 
