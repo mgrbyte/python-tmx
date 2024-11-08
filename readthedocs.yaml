@@ -10,7 +10,7 @@ build:
   tools:
     python: latest
   commands:
-    - pip install .
+    - pip install .[docs]
     - sphinx-build -M html docs/source docs/build
 
 
