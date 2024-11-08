@@ -1,6 +1,3 @@
-|MIT License| |Python Version from PEP 621 TOML|
-
-
 PythonTmx
 =========
 
@@ -18,29 +15,31 @@ Install from pip
 
 Documentation
 -------------
-
+.. :toctree::
+    :depth: 4
+    
 `Structural Elements <PythonTmx.structural.html>`_
 
-`Inline Elements <PythonTmx.Inline.html>`_
+`Inline Elements <PythonTmx.inline.html>`_
 
 `Utils <PythonTmx.utils.html>`_
    
-Features
---------
-
-- Produces fully Tmx standard compliant files
-- Can work with lxml, stdlib’s ElementTree, or any other custom class
-  that conforms to the ``XmlElementLike`` Protocol defined in the
-  ``PythonTmx.structural``.
-- Accepts ``datetime`` and ``int`` object for relevant attributes
-- All attributes are accesible via dot notation for easier access
-
 Usage/Examples
 --------------
 
 Using PythonTmx is as simple as feeding a lxml Element to its
 corresponding constructor and treating as normal python object or
 creating one from scratch to convert anything into a valid tmx file.
+
+Every element in the library can be instantiated using the `elem` attribute.
+It is meant to receive an lxml Element, but is fully compatible with the stdlib
+ElementTree library. If for some reason you want to use another xml library
+to read tmx files, simply make sure that the object you pass to the constructor
+adheres to the ``XmlElementLike`` Protocol.
+
+It also possible to provide values for any other attributes along with ``elem``.
+When a constructor receives both ``elem`` and a keyword argument. That attribute
+will not be parsed and the provided value will be used instead.
 
 Making a tmx file bilngual
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
