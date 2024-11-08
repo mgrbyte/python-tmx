@@ -11,7 +11,7 @@ build:
     python: latest
   commands:
     - pip install .[docs]
-    - sphinx-build -M html docs/source docs/build
+    - sphinx-build -M html docs/source docs/$READTHEDOCS_OUTPUT
 
 
 # Build documentation in the "docs/" directory with Sphinx
