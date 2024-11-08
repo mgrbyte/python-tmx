@@ -235,6 +235,40 @@ class Ude:
 
 
 class Note:
+    """
+    *Note* - The ``Note`` element is used for comments.
+
+    Required Attributes
+    -------------------
+    text — str
+        The actual text of the note
+
+    Optional Attributes
+    -------------------
+    elem — XmlElementLike | None, Defaults to None
+        An xml Element object to parse.
+        Any attribute value that's not in one of the ``__slots__``
+        will be ignored.
+        Values from the keyword arguments will override the values parsed.
+        If not None, gets stored inside the ``_source_elem`` private
+        attribute if needed.
+    lang — str | None, Defaults to None
+        The locale of the text of a given element.
+        A language code as described in the [RFC 3066].
+        This declared value is considered to apply to all elements within
+        the content of the element where it is specified, unless overridden
+        with another instance of the xml:lang attribute. Unlike the other
+        TMX attributes, the values for xml:lang are not case-sensitive.
+        For more information see the section on xml:lang in the XML
+        specification, and the erratum E11 (which replaces RFC 1766 by RFC 3066).
+    encoding — str | None, Defaults to None
+        The original or preferred code set of the data of the element in case
+        it is to be re-encoded in a non-Unicode code set.
+        One of the [IANA] recommended "charset identifier", if possible.
+    """
+
+    __slots__ = "lang", "text", "encoding"
+
     text: str
     lang: str | None
     encoding: str | None
@@ -247,6 +281,7 @@ class Note:
         lang: str | None = None,
         encoding: str | None = None,
     ) -> None:
+        """Constructor"""
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
 
