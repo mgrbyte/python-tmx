@@ -42,7 +42,7 @@ class Structural:
 
 class Map(Structural):
     """
-    *Map* - The ``Map`` element is used to specify a user-defined character
+    `Map` - The ``Map`` Used to specify a user-defined character
     and some of its properties.
 
     Required Attributes
@@ -135,7 +135,7 @@ class Map(Structural):
 
 class Ude:
     """
-    *User-Defined Encoding* — The *Ude* element is used to specify a
+    *User-Defined Encoding* — Used to specify a
     set of user-defined characters and/or, optionally their mapping
     from Unicode to the user-defined encoding.
 
@@ -239,9 +239,9 @@ class Ude:
 
 class Note:
     """
-    *Note* — The ``Note`` element is used for comments.
+    `Note` — Used for comments.
 
-    Contrary to the :class:`Prop`, the *Note* Element is meant only to have text.
+    Contrary to the :class:`Prop`, the `Note` Element is meant only to have text.
     It serves the same purpose as a basic code comment, providing context and
     additional info to the user reagrding its parent.
 
@@ -332,7 +332,43 @@ class Note:
 
 
 class Prop:
-    text: str
+    """
+    `Property` - Used to define the various properties of the parent element
+    (or of the document when `Prop` is used in the :class:`Header`).
+
+    These properties are not defined by the standard.
+    As your tool is fully responsible for handling the content of a `Prop`
+    element you can use it in any way you wish.
+    For example the content can be a list of instructions your tool can parse,
+    not only a simple text like in :class:`Note` elements.
+
+    Required Attributes
+    -------------------
+    text — Any
+        The content of the prop.
+    type — str
+        The kind of data the element represents. By convention, values always
+        preppended with "x-" such as ``type="x-domain"``
+    Optional Attributes
+    -------------------
+    lang — str | None, Defaults to None
+        The locale of the text of a given element.
+        A language code as described in the [RFC 3066].
+        This declared value is considered to apply to all elements within
+        the content of the element where it is specified, unless overridden
+        with another instance of the xml:lang attribute. Unlike the other
+        TMX attributes, the values for xml:lang are not case-sensitive.
+        For more information see the section on xml:lang in the XML
+        specification, and the erratum E11 (which replaces RFC 1766 by RFC 3066).
+    encoding — str | None, Defaults to None
+        The original or preferred code set of the data of the element in case
+        it is to be re-encoded in a non-Unicode code set.
+        One of the [IANA] recommended "charset identifier", if possible.
+    """
+
+    __slots__ = "text", "lang", "type", "encoding"
+
+    text: Any
     type: str
     lang: str | None
     encoding: str | None
@@ -341,11 +377,12 @@ class Prop:
         self,
         *,
         elem: XmlElementLike | None = None,
-        text: str | None = None,
+        text: Any | None = None,
         type: str | None = None,
         lang: str | None = None,
         encoding: str | None = None,
     ) -> None:
+        """Constructor"""
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
 
@@ -363,11 +400,29 @@ class Prop:
 
     @override
     def to_element(self):
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        requried attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        """
         elem: _Element = Element("prop")
 
         # Required Attributes
         if self.text is None:
-            raise AttributeError("Attribute 'text' is required for Prop Elements")
+            raise AttributeError("Attribute 'content' is required for Prop Elements")
         elem.text = self.text
         if self.type is None:
             raise AttributeError("Attribute 'type' is required for Prop Elements")
