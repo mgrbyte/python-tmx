@@ -508,6 +508,12 @@ class Ph:
 
 
 class Sub:
+    """
+    `Sub-flow` - The `Sub` element is used to delimit sub-flow text inside a
+    sequence of native code, for example: the definition of a footnote or the
+    text of title in a HTML anchor element.
+    """
+
     content: str | MutableSequence[str | Bpt | Ept | It | Ph | Hi]
     """
     The actual content of the element.
@@ -573,6 +579,15 @@ class Sub:
     "know with which element to replace it with."
 )
 class Ut:
+    """
+    `Unknown Tag` - The `ut` element is used to delimit a sequence of native
+    unknown codes in the segment.
+    :warning: This element has been DEPRECATED. Use the guidelines outlined in
+    the Rules for Inline Elements section in the official TMX Spec to choose
+    which inline element to used instead of `Ut`.
+    https://www.gala-global.org/tmx-14b#ContentMarkup_Rules
+    """
+
     content: str | MutableSequence[str | Sub]
     """
     The actual content of the element.

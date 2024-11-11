@@ -38,21 +38,20 @@ class Map(Structural):
     """
     The Unicode character value of the character. Its value must be a valid
     Unicode value (including values in the Private Use areas) in hexadecimal
-    format. For example: unicode="#xF8FF".
+    format.
     """
     code: str | None
     """
     The code-point value corresponding to the unicode character. Hexadecimal
-    value prefixed with "#x". For example: code="#x9F".
+    value prefixed with "#x".
     """
     ent: str | None
     """
-    The entity name of the character. Text in ASCII. For example: ent="copy".
+    The entity name of the character. Text in ASCII.
     """
     subst: str | None
     """
-    Alternative string for the character. A text in ASCII. For example:
-    subst="(c)" for the copyright sign.
+    Alternative string for the character. Text in ASCII.
     """
 
     def __init__(
@@ -141,8 +140,8 @@ class Ude(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
+        /,
         name: str | None = None,
         base: str | None = None,
         maps: MutableSequence[Map] | None = None,
