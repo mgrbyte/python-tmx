@@ -4,7 +4,7 @@ from typing import Literal, MutableSequence, overload
 
 from lxml.etree import Element, _Element
 from typing_extensions import deprecated
-from utils import add_attrs
+from utils import _add_attrs
 
 _EmptyElem_ = Element("empty")
 
@@ -81,7 +81,7 @@ class Bpt:
 
     def to_element(self, force_str: bool = False) -> _Element:
         elem = Element("bpt")
-        add_attrs(
+        _add_attrs(
             elem,
             {"i": self.i, "x": self.x, "type": self.type},
             ("i",),
@@ -134,7 +134,7 @@ class Ept:
 
     def to_element(self, force_str: bool = False) -> _Element:
         elem = Element("ept")
-        add_attrs(
+        _add_attrs(
             elem,
             {"i": self.i},
             tuple(),
@@ -190,7 +190,7 @@ class Hi:
 
     def to_element(self, force_str: bool = False) -> _Element:
         elem = Element("hi")
-        add_attrs(
+        _add_attrs(
             elem,
             {"x": self.x, "type": self.type},
             tuple(),
@@ -249,7 +249,7 @@ class It:
 
     def to_element(self, force_str: bool = False) -> _Element:
         elem = Element("it")
-        add_attrs(
+        _add_attrs(
             elem,
             {"pos": self.pos, "x": self.x, "type": self.type},
             ("pos",),
@@ -308,7 +308,7 @@ class Ph:
 
     def to_element(self, force_str: bool = False) -> _Element:
         elem = Element("ph")
-        add_attrs(
+        _add_attrs(
             elem,
             {"x": self.x, "type": self.type, "assoc": self.assoc},
             tuple(),
@@ -359,7 +359,7 @@ class Sub:
 
     def to_element(self, force_str: bool = False) -> _Element:
         elem = Element("sub")
-        add_attrs(
+        _add_attrs(
             elem,
             {"datatype": self.datatype, "type": self.type},
             tuple(),
@@ -412,7 +412,7 @@ class Ut:
 
     def to_element(self, force_str: bool = False) -> _Element:
         elem = Element("ph")
-        add_attrs(
+        _add_attrs(
             elem,
             {"x": self.x},
             tuple(),

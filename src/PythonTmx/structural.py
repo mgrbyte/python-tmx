@@ -12,15 +12,39 @@ class XmlElementLike(Protocol):
     Protocol for all ``elem`` attributes used in PythonTmx. Any class that
     follows this protocol can be used as replacement for an lxml ``_Element``
     in the context of this library.
+
+    Required Attributes
+    -------------------
+    tag — str
+        The tag if the xml Element.
+    text — str | None
+        The text of the Element, if any.
+    tail — str | None
+        The tail (text `after` the closing tag) of the Element, if any.
     """
 
     tag: str
     text: str | None
     tail: str | None
 
-    def get(self, key: str, default: Any) -> Any: ...
-    def __iter__(self) -> Self: ...
-    def __len__(self) -> int: ...
+    def get(self, key: str, default: None) -> Any:
+        """
+        Should any of the element's attribute using a key, and providing a
+        default if the key doesn't exists.
+        """
+        ...
+
+    def __iter__(self) -> Self:
+        """
+        Should yield all direct children and all children should be of the same
+        type.
+        """
+        ...
+
+    def __len__(self) -> int:
+        """
+        Should return the amount of sub elements when calling ``len(element)``
+        """
 
 
 class Structural:
@@ -100,14 +124,15 @@ class Map(Structural):
     def to_element(self) -> _Element:
         """
         Converts the object into an lxml `_Element`, validating that all
-        requried attribtues are present, skipping any optional attributes with
+        required attribtues are present, skipping any optional attributes with
         a value of `None` and changing the attribute name to make the resulting
         `_Element` spec-compliant.
 
         Returns
         -------
         _Element
-            A Tmx compliant lxml Element, ready to written to a file or manipulated however you see fit.
+            A Tmx compliant lxml Element, ready to written to a file or
+            manipulated however you see fit.
 
         Raises
         ------
@@ -196,7 +221,7 @@ class Ude:
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
-        requried attribtues are present, skipping any optional attributes with
+        required attribtues are present, skipping any optional attributes with
         a value of `None` and changing the attribute name to make the resulting
         `_Element` spec-compliant.
         Will recursively call :func:`Map.to_element()` on all the :class:`Map`
@@ -205,7 +230,8 @@ class Ude:
         Returns
         -------
         _Element
-            A Tmx compliant lxml Element, ready to written to a file or manipulated however you see fit.
+            A Tmx compliant lxml Element, ready to written to a file
+            or manipulated however you see fit.
 
         Raises
         ------
@@ -253,7 +279,7 @@ class Note:
     Optional Attributes
     -------------------
     lang — str | None, Defaults to None
-        The locale of the text of a given element.
+        The locale of the text of the Note.
         A language code as described in the [RFC 3066].
         This declared value is considered to apply to all elements within
         the content of the element where it is specified, unless overridden
@@ -262,7 +288,7 @@ class Note:
         For more information see the section on xml:lang in the XML
         specification, and the erratum E11 (which replaces RFC 1766 by RFC 3066).
     encoding — str | None, Defaults to None
-        The original or preferred code set of the data of the element in case
+        The original or preferred code set of the data. In case
         it is to be re-encoded in a non-Unicode code set.
         One of the [IANA] recommended "charset identifier", if possible.
     """
@@ -300,14 +326,15 @@ class Note:
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
-        requried attribtues are present, skipping any optional attributes with
+        required attribtues are present, skipping any optional attributes with
         a value of `None` and changing the attribute name to make the resulting
         `_Element` spec-compliant.
 
         Returns
         -------
         _Element
-            A Tmx compliant lxml Element, ready to written to a file or manipulated however you see fit.
+            A Tmx compliant lxml Element, ready to written to a file or
+            manipulated however you see fit.
 
         Raises
         ------
@@ -353,7 +380,7 @@ class Prop:
     Optional Attributes
     -------------------
     lang — str | None, Defaults to None
-        The locale of the text of a given element.
+        The locale of the text of the Prop.
         A language code as described in the [RFC 3066].
         This declared value is considered to apply to all elements within
         the content of the element where it is specified, unless overridden
@@ -362,7 +389,7 @@ class Prop:
         For more information see the section on xml:lang in the XML
         specification, and the erratum E11 (which replaces RFC 1766 by RFC 3066).
     encoding — str | None, Defaults to None
-        The original or preferred code set of the data of the element in case
+        The original or preferred code set of the data. In case
         it is to be re-encoded in a non-Unicode code set.
         One of the [IANA] recommended "charset identifier", if possible.
     """
@@ -403,14 +430,15 @@ class Prop:
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
-        requried attribtues are present, skipping any optional attributes with
+        required attribtues are present, skipping any optional attributes with
         a value of `None` and changing the attribute name to make the resulting
         `_Element` spec-compliant.
 
         Returns
         -------
         _Element
-            A Tmx compliant lxml Element, ready to written to a file or manipulated however you see fit.
+            A Tmx compliant lxml Element, ready to written to a file or
+            manipulated however you see fit.
 
         Raises
         ------
@@ -485,10 +513,10 @@ class Header:
     Optional Attributes
     -------------------
     encoding — str | None, Defaults to None
-        The original or preferred code set of the data of the element
-        in case it is to be re-encoded in a non-Unicode code set.
+        The original or preferred code set of the data.
+        In case it is to be re-encoded in a non-Unicode code set.
         One of the [IANA] recommended "charset identifier", if possible.
-    creationdate — datetime | str | None, Defaults to None
+    creationdate — str | datetime | None, Defaults to None
         The date of creation of the element.
         Date in [ISO 8601] Format. The recommended pattern to use is:
         "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
@@ -645,6 +673,29 @@ class Header:
             pass
 
     def to_element(self):
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Attribute with ``datetime`` values will be converted to a string.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file or
+            manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        ValueError
+            Raised if segtype is not one of the accepted values
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        """
         elem: _Element = Element("header")
 
         # Required Attributes
@@ -661,7 +712,7 @@ class Header:
         if self.segtype is None:
             raise AttributeError("Attribute 'segtype' is required for Header Elements")
         elif self.segtype.lower() not in ("block", "paragraph", "sentence", "phrase"):
-            raise AttributeError(
+            raise ValueError(
                 "Attribute 'segtype' must be one of"
                 '"block", "paragraph", "sentence", "phrase"'
                 f"but got {self.segtype.lower()}"
@@ -711,6 +762,80 @@ class Header:
 
 
 class Tuv:
+    """
+    `Translation Unit Variant` - The `Tuv` element specifies text in a given
+    language.
+
+    Required Attributes
+    -------------------
+    segment — MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] | str
+        The actual segment. Can be either a string, or an array of string and
+        inline element.
+    lang — str | None
+        The locale of the segment.
+        A language code as described in the [RFC 3066].
+        This declared value is considered to apply to all elements within
+        the content of the element where it is specified, unless overridden
+        with another instance of the xml:lang attribute. Unlike the other
+        TMX attributes, the values for xml:lang are not case-sensitive.
+        For more information see the section on xml:lang in the XML
+        specification, and the erratum E11 (which replaces RFC 1766 by RFC 3066).
+
+    Optional Attributes
+    -------------------
+    encoding — str | None, Defaults to None
+        The original or preferred code set of the data.
+        In case it is to be re-encoded in a non-Unicode code set.
+        One of the [IANA] recommended "charset identifier", if possible.
+    datatype — str
+        The type of data contained in the element.
+        Depending on that type, you may apply different processes to the data.
+    usagecount — int | None, Defaults to None
+        The number of times the content of the element has been accessed in
+        the original TM environment
+    lastusagedate — str | datetime | None, Defaults to None
+        The last time the content of the element was used in the original
+        translation memory environment.
+        Date in [ISO 8601] Format. The recommended pattern to use is:
+        "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
+        MM is the month (2 digits), DD is the day (2 digits),
+        hh is the hours (2 digits), mm is the minutes (2 digits),
+        ss is the second (2 digits), and Z indicates the time is UTC time.
+    creationtool — str| None, Defaults to None
+        The tool that created the TMX document.
+        Its possible values are not specified by the standard but
+        each tool provider should publish the string identifier it uses.
+    creationtoolversion — str | None, Defaults to None
+        The version of the tool that created the TMX document.
+        Its possible values are not specified by the standard but each tool
+        provider should publish the string identifier it uses.
+    creationdate — str | datetime | None, Defaults to None
+        The date of creation of the element.
+        Date in [ISO 8601] Format. The recommended pattern to use is:
+        "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
+        MM is the month (2 digits), DD is the day (2 digits),
+        hh is the hours (2 digits), mm is the minutes (2 digits),
+        ss is the second (2 digits), and Z indicates the time is UTC time.
+    creationid — str | None, Defaults to None
+        The identifier of the user who created the element
+    changedate — datetime | None, Defaults to None
+        The date of the last modification of the element.
+        Date in [ISO 8601] Format. The recommended pattern to use is:
+        "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
+        MM is the month (2 digits), DD is the day (2 digits),
+        hh is the hours (2 digits), mm is the minutes (2 digits),
+        ss is the second (2 digits), and Z indicates the time is UTC time.
+    changeid — str | None, Defaults to None
+        The identifier of the user who modified the element last.
+    tmf — str | none, Defaults to None
+        The format of the translation memory file from which the
+        segment has been generated.
+    notes — MutableSequence[Note] | None, Defaults to None
+        An array of :class:`Note` objects
+    props — MutableSequence[Prop] | None, Defaults to None
+        An array of :class:`Prop` objects
+    """
+
     segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] | str
     lang: str
     encoding: str | None
@@ -726,6 +851,24 @@ class Tuv:
     tmf: str | None
     notes: MutableSequence[Note]
     props: MutableSequence[Prop]
+
+    __slots__ = (
+        "segment",
+        "lang",
+        "encoding",
+        "datatype",
+        "usagecount",
+        "lastusagedate",
+        "creationtool",
+        "creationtoolversion",
+        "creationdate",
+        "creationid",
+        "changedate",
+        "changeid",
+        "tmf",
+        "notes",
+        "props",
+    )
 
     def __init__(
         self,
@@ -749,6 +892,7 @@ class Tuv:
         notes: MutableSequence[Note] | None = None,
         props: MutableSequence[Prop] | None = None,
     ) -> None:
+        """Constructor Method"""
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
 
@@ -835,6 +979,29 @@ class Tuv:
 
     @override
     def to_element(self):
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Attribute with ``datetime`` values will be converted to a string.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file or
+            manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        ValueError
+            Raised if segtype is not one of the accepted values
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        """
         elem: _Element = Element("tuv")
 
         # Sequence Attributes
@@ -903,6 +1070,110 @@ class Tuv:
 
 
 class Tu:
+    """
+    `Translation unit` - The `Tu` element contains the data for a given
+    translation unit.
+
+    Required Attributes
+    -------------------
+
+    Optional Attributes
+    -------------------
+    tuid — str | None, Defaults to None
+        An identifier for the element.
+        Its value is not defined by the standard (it could be unique or not,
+        numeric or alphanumeric, etc.).
+        Text without white spaces.
+    encoding — str | None, Defaults to None
+        The original or preferred code set of the data.
+        In case it is to be re-encoded in a non-Unicode code set.
+        One of the [IANA] recommended "charset identifier", if possible.
+    datatype — str
+        The type of data contained in the element.
+        Depending on that type, you may apply different processes to the data.
+    usagecount — int | None, Defaults to None
+        The number of times the content of the element has been accessed in
+        the original TM environment
+    lastusagedate — str | datetime | None, Defaults to None
+        The last time the content of the element was used in the original
+        translation memory environment.
+        Date in [ISO 8601] Format. The recommended pattern to use is:
+        "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
+        MM is the month (2 digits), DD is the day (2 digits),
+        hh is the hours (2 digits), mm is the minutes (2 digits),
+        ss is the second (2 digits), and Z indicates the time is UTC time.
+    creationtool — str| None, Defaults to None
+        The tool that created the TMX document.
+        Its possible values are not specified by the standard but
+        each tool provider should publish the string identifier it uses.
+    creationtoolversion — str | None, Defaults to None
+        The version of the tool that created the TMX document.
+        Its possible values are not specified by the standard but each tool
+        provider should publish the string identifier it uses.
+    creationdate — str | datetime | None, Defaults to None
+        The date of creation of the element.
+        Date in [ISO 8601] Format. The recommended pattern to use is:
+        "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
+        MM is the month (2 digits), DD is the day (2 digits),
+        hh is the hours (2 digits), mm is the minutes (2 digits),
+        ss is the second (2 digits), and Z indicates the time is UTC time.
+    creationid — str | None, Defaults to None
+        The identifier of the user who created the element
+    changedate — datetime | None, Defaults to None
+        The date of the last modification of the element.
+        Date in [ISO 8601] Format. The recommended pattern to use is:
+        "YYYYMMDDThhmmssZ" where YYYY is the year (4 digits),
+        MM is the month (2 digits), DD is the day (2 digits),
+        hh is the hours (2 digits), mm is the minutes (2 digits),
+        ss is the second (2 digits), and Z indicates the time is UTC time.
+    segtype — Literal["block", "paragraph", "sentence", "phrase"]
+        The default kind of segmentation used throughout the document.
+        If a :class:`Tu` does not have a segtype attribute specified,
+        it uses the one defined in the `Header` element.
+        The "block" value is used when the segment does not correspond
+        to one of the other values.
+        A TMX file can include sentence level segmentation for
+        maximum portability, so it is recommended that you use such
+        segmentation rather than a specific, proprietary method.
+        The rules on how the text was segmented can be carried in a
+        Segmentation Rules eXchange (SRX) document.
+        One of "block", "paragraph", "sentence", or "phrase".
+    changeid — str | None, Defaults to None
+        The identifier of the user who modified the element last.
+    tmf — str | none, Defaults to None
+        The format of the translation memory file from which the
+        segment has been generated.
+    srclang — str
+        The language of the source text.
+        In other words, the :class:`Tuv` holding the source segment
+        will have its `xml:lang` attribute set to the same value as srclang.
+        If a :class:`Tu` element does not have a srclang attribute specified,
+        it uses the one defined in the :class:`Header` element.
+    notes — MutableSequence[Note] | None, Defaults to None
+        An array of :class:`Note` objects
+    props — MutableSequence[Prop] | None, Defaults to None
+        An array of :class:`Prop` objects
+    """
+
+    __slots__ = (
+        "tuvs",
+        "tuid",
+        "encoding",
+        "datatype",
+        "usagecount",
+        "lastusagedate",
+        "creationtool",
+        "creationtoolversion",
+        "creationdate",
+        "creationid",
+        "changedate",
+        "segtype",
+        "changeid",
+        "tmf",
+        "srclang",
+        "notes",
+        "props",
+    )
     tuvs: MutableSequence[Tuv]
     tuid: str | None
     encoding: str | None
@@ -1043,6 +1314,29 @@ class Tu:
 
     @override
     def to_element(self):
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Attribute with ``datetime`` values will be converted to a string.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file or
+            manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        ValueError
+            Raised if segtype is not one of the accepted values
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        """
         elem: _Element = Element("tu")
 
         # Sequence Attributes
@@ -1110,6 +1404,23 @@ class Tu:
 
 
 class Tmx:
+    """
+    `TMX document` - The `Tmx` element encloses all the other elements of
+    the document.
+
+    Required Attributes
+    -------------------
+    header — Header
+        A :class:`Header` element.
+    tus — MutableSequence[Tu]
+        An array of :class:`Tu` elements.
+
+    Optional Attributes
+    -------------------
+    """
+
+    __slots__ = "header", "tus"
+
     header: Header
     tus: MutableSequence[Tu]
 
@@ -1120,6 +1431,7 @@ class Tmx:
         header: Header,
         tus: MutableSequence[Tu],
     ) -> None:
+        """Constructor method"""
         elem = elem if elem is not None else _empty_elem_
         self._source_elem = elem if elem is not _empty_elem_ else None
         self.header = header if header is not None else Header(elem=elem.find("header"))
@@ -1132,6 +1444,24 @@ class Tmx:
             self.tus = []
 
     def to_element(self) -> XmlElementLike:
+        """
+        Converts the object into an lxml `_Element`. Always sets the `version`
+        attribute to "1.4b" and converts the :attribute:`header` and all the
+        :class:`Tu` inside :attribute:`tus` to elements as well.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file or
+            manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised in any required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        """
         elem: _Element = Element("tmx")
         elem.set("version", "1.4")
         body = SubElement(elem, "body")

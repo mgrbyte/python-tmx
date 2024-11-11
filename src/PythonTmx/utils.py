@@ -6,7 +6,7 @@ from lxml.etree import _Element
 _xml_ = r"{http://www.w3.org/XML/1998/namespace}"
 
 
-def add_attrs(
+def _add_attrs(
     elem: _Element, attrs: dict[str, Any], req: tuple[str, ...], force_str: bool = False
 ) -> None:
     for key, val in attrs.items():
