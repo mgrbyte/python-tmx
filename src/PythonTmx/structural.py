@@ -57,7 +57,6 @@ class Map(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
         unicode: str | None = None,
         code: str | None = None,
