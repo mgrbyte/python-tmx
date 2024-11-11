@@ -17,7 +17,7 @@ classifiers = [
 dependencies = ["lxml", "lxml-stubs"]
 
 [project.optional-dependencies]
-docs = ["sphinx","pydata-sphinx-theme"]
+docs = ["sphinx","pydata-sphinx-theme", "typing_extensions"]
 
 
 [project.urls]

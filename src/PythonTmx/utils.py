@@ -28,7 +28,7 @@ class XmlElementLike(Protocol):
         """
         ...
 
-    def __iter__(self) -> Generator[Self]:
+    def __iter__(self) -> Generator[Self, None, None]:
         """
         Should yield all direct children and all children should be of the same
         type.
