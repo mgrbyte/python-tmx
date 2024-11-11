@@ -10,9 +10,6 @@ from PythonTmx.utils import XmlElementLike
 _EmptyElem_ = Element("empty")
 
 
-def _add_attrs(): ...
-
-
 def _parse_inline(
     elem: XmlElementLike,
 ) -> MutableSequence[str | Inline] | str:
@@ -137,6 +134,7 @@ class Bpt(Inline):
     def to_element(self) -> _Element:
         elem = Element("bpt")
         elem.text, elem.tail = "", ""
+
         # Required Attributes
         if self.i is None:
             raise AttributeError("Attribute 'i' is required for Bpt Elements")
@@ -207,20 +205,17 @@ class Ept:
                 self.i = int(self.i)
             except (TypeError, ValueError):
                 pass
-        if isinstance(self.x, str):
-            try:
-                self.x = int(self.x)
-            except (TypeError, ValueError):
-                pass
 
     def to_element(self) -> _Element:
         elem = Element("ept")
         elem.text, elem.tail = "", ""
+
         # Required Attributes
         if self.i is None:
             raise AttributeError("Attribute 'i' is required for Ept Elements")
-        elif isinstance(self.i, (int, str)):
-            elem.set("i", str(self.i))
+        if isinstance(self.i, int):
+            self.i = str(self.i)
+        elem.set("i", self.i)
 
         # Content
         if isinstance(self.content, str):
@@ -286,11 +281,6 @@ class Hi:
         self.content = content if content is not None else _parse_inline(elem)
         self.x = x if x is not None else elem.get("x")
         self.type = type if type is not None else elem.get("type")
-        if isinstance(self.i, str):
-            try:
-                self.i = int(self.i)
-            except (TypeError, ValueError):
-                pass
         if isinstance(self.x, str):
             try:
                 self.x = int(self.x)
@@ -303,6 +293,8 @@ class Hi:
 
         # Optional Attributes
         if self.x is not None:
+            if isinstance(self.x, int):
+                self.x = str(self.x)
             elem.set("x", self.x)
         if self.type is not None:
             elem.set("type", self.type)
@@ -371,8 +363,8 @@ class It:
         """
         elem = elem if elem is not None else _EmptyElem_
         self.content = content if content is not None else _parse_inline(elem)
-        self.x = x if x is not None else elem.get("x", None)
         self.pos = pos if pos is not None else elem.get("pos", None)
+        self.x = x if x is not None else elem.get("x", None)
         self.type = type if type is not None else elem.get("type", None)
         if isinstance(self.x, str):
             try:
@@ -383,6 +375,18 @@ class It:
     def to_element(self) -> _Element:
         elem = Element("it")
         elem.text, elem.tail = "", ""
+
+        # Required Attributes
+        if self.pos is None:
+            raise AttributeError("Attribute 'pos' is required for It Elements")
+        if self.pos is None:
+            raise AttributeError("Attribute 'pos' is required for Header Elements")
+        elif self.pos.lower() not in ("begin", "end"):
+            raise ValueError(
+                'Attribute "pos" must be one of "begin", "end"'
+                f"but got {self.pos.lower()}"
+            )
+        elem.set("pos", self.pos.lower())
 
         # Optional Attributes
         if self.x is not None:
@@ -420,7 +424,7 @@ class Ph:
     """
     The actual content of the element.
     """
-    i: int
+    i: int | None
     """
     Used to pair the `Bpt` elements with :class:`Ept` elements. This mechanism
     provides TMX with support to markup a possibly overlapping range of codes.
@@ -476,7 +480,12 @@ class Ph:
         if self.type is not None:
             elem.set("type", self.type)
         if self.assoc is not None:
-            elem.set("assoc", self.type)
+            if self.assoc.lower() not in ("p", "f", "b"):
+                raise ValueError(
+                    'Attribute "pos" must be one of "p", "f", "b"'
+                    f"but got {self.assoc.lower()}"
+                )
+        elem.set("assoc", self.assoc.lower())
 
         # Content
         if isinstance(self.content, str):
@@ -500,8 +509,17 @@ class Ph:
 
 class Sub:
     content: str | MutableSequence[str | Bpt | Ept | It | Ph | Hi]
+    """
+    The actual content of the element.
+    """
     type: str | None
+    """
+    The kind of data the element represents.
+    """
     datatype: str | None
+    """
+    The type of data contained in the element.
+    """
 
     def __init__(
         self,
@@ -556,7 +574,17 @@ class Sub:
 )
 class Ut:
     content: str | MutableSequence[str | Sub]
-    x: str | None
+    """
+    The actual content of the element.
+    """
+    x: int | None
+    """
+    Used to match inline elements between each
+    `Tuv <PythonTmx.structural.html#structural.Tuv>`_ elements of a given
+    `Tu <PythonTmx.structural.html#structural.Tu>`_ element.
+    Note that an `Ept` element is matched based on the `x` attribute of its
+    corresponding <bpt> element.
+    """
 
     def __init__(
         self,

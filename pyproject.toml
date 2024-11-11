@@ -10,15 +10,14 @@ readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "MIT" }
 requires-python = ">=3.12"
 classifiers = [
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
-dependencies = ["lxml"]
+dependencies = ["lxml", "lxml-stubs"]
 
 [project.optional-dependencies]
-docs = ["sphinx", "typing_extensions","pydata-sphinx-theme"]
+docs = ["sphinx","pydata-sphinx-theme"]
 
 
 [project.urls]
