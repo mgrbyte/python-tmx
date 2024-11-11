@@ -93,7 +93,7 @@ class Map(Structural):
         Raises
         ------
         AttributeError
-            Raised in any required attribute has a value of `None`
+            Raised if a required attribute has a value of `None`
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
@@ -188,7 +188,7 @@ class Ude(Structural):
         Raises
         ------
         AttributeError
-            Raised in any required attribute has a value of `None`
+            Raised if a required attribute has a value of `None`
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
@@ -285,7 +285,7 @@ class Note(Structural):
         Raises
         ------
         AttributeError
-            Raised in any required attribute has a value of `None`
+            Raised if a required attribute has a value of `None`
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
@@ -383,7 +383,7 @@ class Prop(Structural):
         Raises
         ------
         AttributeError
-            Raised in any required attribute has a value of `None`
+            Raised if a required attribute has a value of `None`
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
@@ -639,7 +639,7 @@ class Header(Structural):
         Raises
         ------
         AttributeError
-            Raised in any required attribute has a value of `None`
+            Raised if a required attribute has a value of `None`
         ValueError
             Raised if segtype is not one of the accepted values
         TypeError
@@ -947,7 +947,7 @@ class Tuv(Structural):
         Raises
         ------
         AttributeError
-            Raised in any required attribute has a value of `None`
+            Raised if a required attribute has a value of `None`
         ValueError
             Raised if :attr:`segtype` is not one of the accepted values,
             if 2 or more `Bpt` elements have the same 'i' attribute or if there
@@ -1314,7 +1314,7 @@ class Tu(Structural):
         Raises
         ------
         AttributeError
-            Raised in any required attribute has a value of `None`
+            Raised if a required attribute has a value of `None`
         ValueError
             Raised if segtype is not one of the accepted values
         TypeError
@@ -1439,7 +1439,7 @@ class Tmx(Structural):
         Raises
         ------
         AttributeError
-            Raised in any required attribute has a value of `None`
+            Raised if a required attribute has a value of `None`
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """

@@ -132,6 +132,27 @@ class Bpt(Inline):
                 pass
 
     def to_element(self) -> _Element:
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file
+            or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised if a required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        ValueError
+            Raised if :attr:`content` contains a disallowed element
+        """
         elem = Element("bpt")
         elem.text, elem.tail = "", ""
 
@@ -161,7 +182,7 @@ class Bpt(Inline):
                     elem.append(item.to_element())
                     elem[-1].tail = ""
                 else:
-                    raise TypeError(
+                    raise ValueError(
                         f"'{type(item)}' Elements are not allowed inside a Bpt Element"
                     )
         return elem
@@ -207,6 +228,27 @@ class Ept:
                 pass
 
     def to_element(self) -> _Element:
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file
+            or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised if a required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        ValueError
+            Raised if :attr:`content` contains a disallowed element
+        """
         elem = Element("ept")
         elem.text, elem.tail = "", ""
 
@@ -231,7 +273,7 @@ class Ept:
                     elem.append(item.to_element())
                     elem[-1].tail = ""
                 else:
-                    raise TypeError(
+                    raise ValueError(
                         f"'{type(item)}' Elements are not allowed inside a Ept Element"
                     )
         return elem
@@ -288,6 +330,27 @@ class Hi:
                 pass
 
     def to_element(self) -> _Element:
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file
+            or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised if a required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        ValueError
+            Raised if :attr:`content` contains a disallowed element
+        """
         elem = Element("hi")
         elem.text, elem.tail = "", ""
 
@@ -313,7 +376,7 @@ class Hi:
                     elem.append(item.to_element())
                     elem[-1].tail = ""
                 else:
-                    raise TypeError(
+                    raise ValueError(
                         f"'{type(item)}' Elements are not allowed inside a Hi Element"
                     )
         return elem
@@ -373,6 +436,27 @@ class It:
                 pass
 
     def to_element(self) -> _Element:
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file
+            or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised if a required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        ValueError
+            Raised if :attr:`content` contains a disallowed element
+        """
         elem = Element("it")
         elem.text, elem.tail = "", ""
 
@@ -408,7 +492,7 @@ class It:
                     elem.append(item.to_element())
                     elem[-1].tail = ""
                 else:
-                    raise TypeError(
+                    raise ValueError(
                         f"'{type(item)}' Elements are not allowed inside a It Element"
                     )
         return elem
@@ -471,6 +555,27 @@ class Ph:
                 pass
 
     def to_element(self) -> _Element:
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file
+            or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised if a required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        ValueError
+            Raised if :attr:`content` contains a disallowed element
+        """
         elem = Element("ph")
         elem.text, elem.tail = "", ""
 
@@ -501,7 +606,7 @@ class Ph:
                     elem.append(item.to_element())
                     elem[-1].tail = ""
                 else:
-                    raise TypeError(
+                    raise ValueError(
                         f"'{type(item)}' Elements are not allowed inside a It Element"
                     )
         return elem
@@ -544,6 +649,27 @@ class Sub:
         self.type = type if type is not None else elem.get("type", None)
 
     def to_element(self) -> _Element:
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file
+            or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised if a required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        ValueError
+            Raised if :attr:`content` contains a disallowed element
+        """
         elem = Element("sub")
         elem.text, elem.tail = "", ""
 
@@ -567,7 +693,7 @@ class Sub:
                     elem.append(item.to_element())
                     elem[-1].tail = ""
                 else:
-                    raise TypeError(
+                    raise ValueError(
                         f"'{type(item)}' Elements are not allowed inside a Sub Element"
                     )
         return elem
@@ -622,6 +748,27 @@ class Ut:
                 pass
 
     def to_element(self) -> _Element:
+        """
+        Converts the object into an lxml `_Element`, validating that all
+        required attribtues are present, skipping any optional attributes with
+        a value of `None` and changing the attribute name to make the resulting
+        `_Element` spec-compliant.
+
+        Returns
+        -------
+        _Element
+            A Tmx compliant lxml Element, ready to written to a file
+            or manipulated however you see fit.
+
+        Raises
+        ------
+        AttributeError
+            Raised if a required attribute has a value of `None`
+        TypeError
+            Raised by lxml if trying to set a value that is not a `str`
+        ValueError
+            Raised if :attr:`content` contains a disallowed element
+        """
         elem = Element("sub")
         elem.text, elem.tail = "", ""
 
@@ -643,7 +790,7 @@ class Ut:
                     elem.append(item.to_element())
                     elem[-1].tail = ""
                 else:
-                    raise TypeError(
+                    raise ValueError(
                         f"'{type(item)}' Elements are not allowed inside a Sub Element"
                     )
         return elem
