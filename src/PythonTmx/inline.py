@@ -7,7 +7,7 @@ from typing_extensions import deprecated
 
 from PythonTmx.utils import XmlElementLike
 
-_EmptyElem_ = Element("empty")
+_Empty_Elem_ = Element("empty")
 
 
 def _parse_inline(
@@ -115,7 +115,11 @@ class Bpt(Inline):
         """
         Constructor method
         """
-        elem = elem if elem is not None else _EmptyElem_
+        if elem is not _Empty_Elem_ and elem.tag != "bpt":
+            raise ValueError(
+                "provided element tag does not match the object you're trying to create."
+                f"expected 'bpt' but got {elem.tag}"
+            )
         self.content = content if content is not None else _parse_inline(elem)
         self.i = i if i is not None else elem.get("i", None)
         self.x = x if x is not None else elem.get("x", None)
@@ -218,7 +222,16 @@ class Ept:
         """
         Constructor method
         """
-        elem = elem if elem is not None else _EmptyElem_
+        if elem is not _Empty_Elem_ and elem.tag != "ept":
+            raise ValueError(
+                "provided element tag does not match the object you're trying to create."
+                f"expected 'ept' but got {elem.tag}"
+            )
+        if elem is not _Empty_Elem_ and elem.tag != "bpt":
+            raise ValueError(
+                "provided element tag does not match the object you're trying to create."
+                f"expected 'bpt' but got {elem.tag}"
+            )
         self.content = content if content is not None else _parse_inline(elem)
         self.i = i if i is not None else elem.get("i", None)
         if isinstance(self.i, str):
@@ -319,7 +332,11 @@ class Hi:
         """
         Constructor method
         """
-        elem = elem if elem is not None else _EmptyElem_
+        if elem is not _Empty_Elem_ and elem.tag != "hi":
+            raise ValueError(
+                "provided element tag does not match the object you're trying to create."
+                f"expected 'hi' but got {elem.tag}"
+            )
         self.content = content if content is not None else _parse_inline(elem)
         self.x = x if x is not None else elem.get("x")
         self.type = type if type is not None else elem.get("type")
@@ -424,7 +441,11 @@ class It:
         """
         Constructor method
         """
-        elem = elem if elem is not None else _EmptyElem_
+        if elem is not _Empty_Elem_ and elem.tag != "it":
+            raise ValueError(
+                "provided element tag does not match the object you're trying to create."
+                f"expected 'it' but got {elem.tag}"
+            )
         self.content = content if content is not None else _parse_inline(elem)
         self.pos = pos if pos is not None else elem.get("pos", None)
         self.x = x if x is not None else elem.get("x", None)
@@ -543,7 +564,11 @@ class Ph:
         """
         Constructor method
         """
-        elem = elem if elem is not None else _EmptyElem_
+        if elem is not _Empty_Elem_ and elem.tag != "ph":
+            raise ValueError(
+                "provided element tag does not match the object you're trying to create."
+                f"expected 'ph' but got {elem.tag}"
+            )
         self.content = content if content is not None else _parse_inline(elem)
         self.x = x if x is not None else elem.get("x", None)
         self.assoc = assoc if assoc is not None else elem.get("assoc", None)
@@ -643,7 +668,11 @@ class Sub:
         """
         Constructor method
         """
-        elem = elem if elem is not None else _EmptyElem_
+        if elem is not _Empty_Elem_ and elem.tag != "sub":
+            raise ValueError(
+                "provided element tag does not match the object you're trying to create."
+                f"expected 'sub' but got {elem.tag}"
+            )
         self.content = content if content is not None else _parse_inline(elem)
         self.datatype = datatype if datatype is not None else elem.get("datatype", None)
         self.type = type if type is not None else elem.get("type", None)
@@ -708,7 +737,8 @@ class Ut:
     """
     `Unknown Tag` - The `ut` element is used to delimit a sequence of native
     unknown codes in the segment.
-    :warning: This element has been DEPRECATED. Use the guidelines outlined in
+
+    This element has been DEPRECATED. Use the guidelines outlined in
     the Rules for Inline Elements section in the official TMX Spec to choose
     which inline element to used instead of `Ut`.
     https://www.gala-global.org/tmx-14b#ContentMarkup_Rules
@@ -737,7 +767,11 @@ class Ut:
         """
         Constructor method
         """
-        elem = elem if elem is not None else _EmptyElem_
+        if elem is not _Empty_Elem_ and elem.tag != "ut":
+            raise ValueError(
+                "provided element tag does not match the object you're trying to create."
+                f"expected 'ut' but got {elem.tag}"
+            )
         self.content = content if content is not None else _parse_inline(elem)
         self.x = x if x is not None else elem.get("x", None)
 

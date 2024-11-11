@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import Any, Literal, MutableSequence, override
+from typing import Literal, MutableSequence, override
 
 from lxml.etree import Element, SubElement, _Element
 
 from PythonTmx.inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
 from PythonTmx.utils import XmlElementLike
 
-_empty_elem_ = Element("empty")
+_Empty_Elem_ = Element("empty")
 
 
 class Structural:
@@ -57,7 +57,8 @@ class Map(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
-        unicode: str | None = None,
+        *,
+        unicode: str = None,
         code: str | None = None,
         ent: str | None = None,
         subst: str | None = None,
@@ -65,8 +66,13 @@ class Map(Structural):
         """
         Constructor method
         """
-        elem = elem if elem is not None else _empty_elem_
-        self._source_elem = elem if elem is not _empty_elem_ else None
+        elem = elem if elem is not None else _Empty_Elem_
+        if elem is not _Empty_Elem_ and elem.tag != "map":
+            raise ValueError(
+                "provided element tag does not match the object you're "
+                f"trying to create, expected 'map' but got {elem.tag}"
+            )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # Required Attributes
         self.unicode = unicode if unicode is not None else elem.get("unicode")
@@ -140,15 +146,20 @@ class Ude(Structural):
 
     def __init__(
         self,
+        *,
         elem: XmlElementLike | None = None,
-        /,
-        name: str | None = None,
+        name: str = None,
         base: str | None = None,
         maps: MutableSequence[Map] | None = None,
     ) -> None:
         """Constructor"""
-        elem = elem if elem is not None else _empty_elem_
-        self._source_elem = elem if elem is not _empty_elem_ else None
+        elem = elem if elem is not None else _Empty_Elem_
+        if elem is not _Empty_Elem_ and elem.tag != "ude":
+            raise ValueError(
+                "provided element tag does not match the object you're "
+                f"trying to create, expected 'ude' but got {elem.tag}"
+            )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # Required Attributes
         self.name = name if name is not None else elem.get("name")
@@ -158,14 +169,16 @@ class Ude(Structural):
 
         # Sequence Attributes
         if maps is None:
+            self.maps = []
             if len(elem):
-                self.maps = [
-                    Map(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "map"
-                ]
-            else:
-                self.maps = []
+                for map in elem:
+                    if map.tag != "map":
+                        raise ValueError(
+                            "provided element contain disallowed elements. "
+                            "Only <map> elements are allowed in a <ude> "
+                            f"but got {elem.tag}"
+                        )
+                    self.maps.append(Map(elem=map))
         else:
             self.maps = maps
 
@@ -249,13 +262,18 @@ class Note(Structural):
         self,
         *,
         elem: XmlElementLike | None = None,
-        text: str | None = None,
+        text: str = None,
         lang: str | None = None,
         encoding: str | None = None,
     ) -> None:
         """Constructor"""
-        elem = elem if elem is not None else _empty_elem_
-        self._source_elem = elem if elem is not _empty_elem_ else None
+        elem = elem if elem is not None else _Empty_Elem_
+        if elem is not _Empty_Elem_ and elem.tag != "note":
+            raise ValueError(
+                "provided element tag does not match the object you're "
+                f"trying to create, expected 'note' but got {elem.tag}"
+            )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # Required Attributes
         self.text = text if text is not None else elem.text
@@ -345,14 +363,19 @@ class Prop(Structural):
         self,
         *,
         elem: XmlElementLike | None = None,
-        text: Any | None = None,
-        type: str | None = None,
+        text: str = None,
+        type: str = None,
         lang: str | None = None,
         encoding: str | None = None,
     ) -> None:
         """Constructor"""
-        elem = elem if elem is not None else _empty_elem_
-        self._source_elem = elem if elem is not _empty_elem_ else None
+        elem = elem if elem is not None else _Empty_Elem_
+        if elem is not _Empty_Elem_ and elem.tag != "prop":
+            raise ValueError(
+                "provided element tag does not match the object you're "
+                f"trying to create, expected 'prop' but got {elem.tag}"
+            )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # Required Attributes
         self.type = type if type is not None else elem.get("type")
@@ -527,27 +550,32 @@ class Header(Structural):
         self,
         *,
         elem: XmlElementLike | None = None,
-        creationtool: str | None = None,
-        creationtoolversion: str | None = None,
-        segtype: Literal["block", "paragraph", "sentence", "phrase"] | None = None,
-        tmf: str | None = None,
-        adminlang: str | None = None,
-        srclang: str | None = None,
-        datatype: str | None = None,
+        creationtool: str = None,
+        creationtoolversion: str = None,
+        segtype: Literal["block", "paragraph", "sentence", "phrase"] = None,
+        tmf: str = None,
+        adminlang: str = None,
+        srclang: str = None,
+        datatype: str = None,
         encoding: str | None = None,
         creationdate: str | datetime | None = None,
         creationid: str | None = None,
         changedate: str | datetime | None = None,
         changeid: str | None = None,
-        notes: MutableSequence[Note] | None = None,
-        props: MutableSequence[Prop] | None = None,
-        udes: MutableSequence[Ude] | None = None,
+        notes: MutableSequence[Note] = None,
+        props: MutableSequence[Prop] = None,
+        udes: MutableSequence[Ude] = None,
     ) -> None:
         """
         Constructor Method
         """
-        elem = elem if elem is not None else _empty_elem_
-        self._source_elem = elem if elem is not _empty_elem_ else None
+        elem = elem if elem is not None else _Empty_Elem_
+        if elem is not _Empty_Elem_ and elem.tag != "header":
+            raise ValueError(
+                "provided element tag does not match the object you're "
+                f"trying to create, expected 'header' but got {elem.tag}"
+            )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # Required Attributes
         self.creationtool = (
@@ -579,36 +607,42 @@ class Header(Structural):
 
         # Sequence Attributes
         if notes is None:
+            self.notes = []
             if len(elem):
-                self.notes = [
-                    Note(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "note"
-                ]
-            else:
-                self.notes = []
+                for note in elem:
+                    if note.tag != "note":
+                        raise ValueError(
+                            "provided element contain disallowed elements. "
+                            "Only <note>, <prop> and <ude> elements are"
+                            f"allowed in a <header> but got {elem.tag}"
+                        )
+                    self.notes.append(Note(elem=note))
         else:
             self.notes = notes
         if props is None:
+            self.props = []
             if len(elem):
-                self.props = [
-                    Prop(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "prop"
-                ]
-            else:
-                self.props = []
+                for ude in elem:
+                    if ude.tag != "prop":
+                        raise ValueError(
+                            "provided element contain disallowed elements. "
+                            "Only <note>, <prop> and <ude> elements are"
+                            f"allowed in a <header> but got {elem.tag}"
+                        )
+                    self.props.append(Prop(elem=note))
         else:
             self.props = props
         if udes is None:
+            self.udes = []
             if len(elem):
-                self.udes = [
-                    Ude(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "ude"
-                ]
-            else:
-                self.udes = []
+                for ude in elem:
+                    if ude.tag != "ude":
+                        raise ValueError(
+                            "provided element contain disallowed elements. "
+                            "Only <note>, <prop> and <ude> elements are"
+                            f"allowed in a <header> but got {elem.tag}"
+                        )
+                    self.udes.append(Ude(elem=note))
         else:
             self.udes = udes
 
@@ -826,9 +860,8 @@ class Tuv(Structural):
         *,
         elem: XmlElementLike | None = None,
         segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut]
-        | str
-        | None = None,
-        lang: str | None = None,
+        | str = None,
+        lang: str = None,
         encoding: str | None = None,
         datatype: str | None = None,
         usagecount: int | None = None,
@@ -844,8 +877,13 @@ class Tuv(Structural):
         props: MutableSequence[Prop] | None = None,
     ) -> None:
         """Constructor Method"""
-        elem = elem if elem is not None else _empty_elem_
-        self._source_elem = elem if elem is not _empty_elem_ else None
+        elem = elem if elem is not None else _Empty_Elem_
+        if elem is not _Empty_Elem_ and elem.tag != "tuv":
+            raise ValueError(
+                "provided element tag does not match the object you're "
+                f"trying to create, expected 'tuv' but got {elem.tag}"
+            )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # Required Attributes
         self.segment = segment if segment is None else _parse_inline(elem)
@@ -906,25 +944,29 @@ class Tuv(Structural):
 
         # Sequence Attributes
         if notes is None:
+            self.notes = []
             if len(elem):
-                self.notes = [
-                    Note(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "note"
-                ]
-            else:
-                self.notes = []
+                for note in elem:
+                    if note.tag != "note":
+                        raise ValueError(
+                            "provided element contain disallowed elements. "
+                            "Only <note> and <prop> elements are"
+                            f"allowed in a <tuv> but got {elem.tag}"
+                        )
+                    self.notes.append(Note(elem=note))
         else:
             self.notes = notes
         if props is None:
+            self.props = []
             if len(elem):
-                self.props = [
-                    Prop(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "prop"
-                ]
-            else:
-                self.props = []
+                for ude in elem:
+                    if ude.tag != "prop":
+                        raise ValueError(
+                            "provided element contain disallowed elements. "
+                            "Only <note> and <prop> elements are"
+                            f"allowed in a <tuv> but got {elem.tag}"
+                        )
+                    self.props.append(Prop(elem=note))
         else:
             self.props = props
 
@@ -1103,13 +1145,13 @@ class Tu(Structural):
     hh is the hours (2 digits), mm is the minutes (2 digits),
     ss is the second (2 digits), and Z indicates the time is UTC time.
     """
-    creationtool: str
+    creationtool: str | None
     """
     The tool that created the TMX document.
     Its possible values are not specified by the standard but
     each tool provider should publish the string identifier it uses.
     """
-    creationtoolversion: str
+    creationtoolversion: str | None
     """
     The version of the tool that created the TMX document.
     Its possible values are not specified by the standard but each tool
@@ -1135,7 +1177,7 @@ class Tu(Structural):
     hh is the hours (2 digits), mm is the minutes (2 digits),
     ss is the second (2 digits), and Z indicates the time is UTC time.
     """
-    segtype: Literal["block", "paragraph", "sentence", "phrase"]
+    segtype: Literal["block", "paragraph", "sentence", "phrase"] | None
     """
     The default kind of segmentation used throughout the document.
     If a :class:`Tu` does not have a segtype attribute specified,
@@ -1153,12 +1195,12 @@ class Tu(Structural):
     """
     The identifier of the user who modified the element last.
     """
-    tmf: str
+    tmf: str | None
     """
     The format of the translation memory file from which the TMX
     document or segment thereof have been generated.
     """
-    srclang: str
+    srclang: str | None
     """
     The language of the source text.
     In other words, the :class:`Tuv` holding the source segment
@@ -1198,8 +1240,13 @@ class Tu(Structural):
         props: MutableSequence[Prop] | None = None,
         tuvs: MutableSequence[Tuv] | None = None,
     ) -> None:
-        elem = elem if elem is not None else _empty_elem_
-        self._source_elem = elem if elem is not _empty_elem_ else None
+        elem = elem if elem is not None else _Empty_Elem_
+        if elem is not _Empty_Elem_ and elem.tag != "tu":
+            raise ValueError(
+                "provided element tag does not match the object you're "
+                f"trying to create, expected 'tu' but got {elem.tag}"
+            )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # No Required Attributes
 
@@ -1409,12 +1456,17 @@ class Tmx(Structural):
         self,
         *,
         elem: XmlElementLike | None = None,
-        header: Header,
-        tus: MutableSequence[Tu],
+        header: Header = None,
+        tus: MutableSequence[Tu] = None,
     ) -> None:
         """Constructor method"""
-        elem = elem if elem is not None else _empty_elem_
-        self._source_elem = elem if elem is not _empty_elem_ else None
+        elem = elem if elem is not None else _Empty_Elem_
+        if elem is not _Empty_Elem_ and elem.tag != "tmx":
+            raise ValueError(
+                "provided element tag does not match the object you're "
+                f"trying to create, expected 'tmx' but got {elem.tag}"
+            )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
         self.header = header if header is not None else Header(elem=elem.find("header"))
         if tus is None:
             if (body := elem.find("body")) is not None and len(body):
