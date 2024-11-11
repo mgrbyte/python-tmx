@@ -1,3 +1,11 @@
+.. toctree:: PythonTmx.structural
+    :maxdepth: 2
+    :hidden:
+
+.. toctree:: PythonTmx.inline
+    :maxdepth: 2
+    :hidden:
+
 PythonTmx
 =========
 
@@ -13,15 +21,7 @@ Install from pip
 
      pip install python-tmx
 
-API Reference
--------------
-   
-`Structural Elements <PythonTmx.structural.html>`_
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`Inline Elements <PythonTmx.inline.html>`_
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   
 Description
 -----------
 
