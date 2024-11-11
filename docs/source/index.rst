@@ -1,9 +1,13 @@
 .. toctree:: PythonTmx.structural
-    :maxdepth: 2
+    :maxdepth: 4
     :hidden:
 
 .. toctree:: PythonTmx.inline
-    :maxdepth: 2
+    :maxdepth: 4
+    :hidden:
+    
+.. toctree:: PythonTmx.utils
+    :maxdepth: 4
     :hidden:
 
 PythonTmx

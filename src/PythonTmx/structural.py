@@ -1,56 +1,18 @@
 from datetime import datetime
-from typing import Any, Literal, MutableSequence, Protocol, Self, override
+from typing import Any, Literal, MutableSequence, override
 
-from inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
 from lxml.etree import Element, SubElement, _Element
+
+from PythonTmx.inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
+from PythonTmx.utils import XmlElementLike
 
 _empty_elem_ = Element("empty")
 
 
-class XmlElementLike(Protocol):
-    """
-    Protocol for all ``elem`` attributes used in PythonTmx. Any class that
-    follows this protocol can be used as replacement for an lxml ``_Element``
-    in the context of this library.
-    """
-
-    tag: str
-    """
-    The tag if the xml Element.
-    """
-    text: str | None
-    """
-    The text of the Element, if any.
-    """
-    tail: str | None
-    """
-    The tail (text `after` the closing tag) of the Element, if any.
-    """
-
-    def get(self, key: str, default: None) -> Any:
-        """
-        Should any of the element's attribute using a key, and providing a
-        default if the key doesn't exists.
-        """
-        ...
-
-    def __iter__(self) -> Self:
-        """
-        Should yield all direct children and all children should be of the same
-        type.
-        """
-        ...
-
-    def __len__(self) -> int:
-        """
-        Should return the amount of sub elements when calling ``len(element)``
-        """
-
-
 class Structural:
     """
-    Base class for Structural elements.
-    Not meant to be instantiated.
+    Base class for Structural elements. Not meant to be instantiated and purely here
+    for inheritance.
     """
 
     __slots__ = ("_source_elem",)
@@ -80,7 +42,7 @@ class Map(Structural):
     """
     code: str | None
     """
-    TThe code-point value corresponding to the unicode character. Hexadecimal
+    The code-point value corresponding to the unicode character. Hexadecimal
     value prefixed with "#x". For example: code="#x9F".
     """
     ent: str | None
@@ -137,7 +99,7 @@ class Map(Structural):
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
-        elem: _Element = Element("map")
+        elem = Element("map")
 
         # Required Attributes
         if self.unicode is None:
@@ -154,7 +116,7 @@ class Map(Structural):
         return elem
 
 
-class Ude:
+class Ude(Structural):
     """
     `User-Defined Encoding` — Used to specify a set of user-defined characters
     and/or, optionally their mapping from Unicode to the user-defined encoding.
@@ -232,7 +194,7 @@ class Ude:
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
-        elem: _Element = Element("ude")
+        elem = Element("ude")
 
         # Required Attributes
         if self.name is None:
@@ -255,7 +217,7 @@ class Ude:
         return elem
 
 
-class Note:
+class Note(Structural):
     """
     `Note` — Used for comments.
 
@@ -329,7 +291,7 @@ class Note:
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
-        elem: _Element = Element("note")
+        elem = Element("note")
 
         # Required Attributes
         if self.text is None:
@@ -344,7 +306,7 @@ class Note:
         return elem
 
 
-class Prop:
+class Prop(Structural):
     """
     `Property` - Used to define the various properties of the parent element
     (or of the document when `Prop` is used in the :class:`Header`).
@@ -427,7 +389,7 @@ class Prop:
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
-        elem: _Element = Element("prop")
+        elem = Element("prop")
 
         # Required Attributes
         if self.text is None:
@@ -445,7 +407,7 @@ class Prop:
         return elem
 
 
-class Header:
+class Header(Structural):
     """
     `File header` — Contains information pertaining to the whole document.
     """
@@ -685,7 +647,7 @@ class Header:
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
-        elem: _Element = Element("header")
+        elem = Element("header")
 
         # Required Attributes
         if self.creationtool is None:
@@ -750,7 +712,7 @@ class Header:
         return elem
 
 
-class Tuv:
+class Tuv(Structural):
     """
     `Translation Unit Variant` - The `Tuv` element specifies text in a given
     :class:`Tu`
@@ -989,11 +951,13 @@ class Tuv:
         AttributeError
             Raised in any required attribute has a value of `None`
         ValueError
-            Raised if segtype is not one of the accepted values
+            Raised if :attr:`segtype` is not one of the accepted values,
+            if 2 or more `Bpt` elements have the same 'i' attribute or if there
+            is an orphaned `Bpt` or `Ept` element
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
-        elem: _Element = Element("tuv")
+        elem = Element("tuv")
 
         # Sequence Attributes
         if len(self.notes):
@@ -1018,6 +982,28 @@ class Tuv:
                         seg.text = seg.text + item if seg.text is not None else item
                 else:
                     seg.append(item.to_element())
+
+        # Check well-formedness of <seg> element
+        bpt, ept, all_i = 0, 0, []
+        for child in seg.iter("bpt", "ept"):
+            if child.tag == "bpt":
+                bpt += 1
+                if (i := child.get("i")) not in all_i:
+                    all_i.add(i)
+                else:
+                    raise ValueError(
+                        "All 'i' attributes must be unique inside a single segment"
+                    )
+            else:
+                ept += 1
+        if bpt > ept:
+            raise ValueError(
+                "Every Bpt must have a corresponding Ept element but at least 1 Bpt element is orhpaned"
+            )
+        elif ept > bpt:
+            raise ValueError(
+                "Every Bpt must have a corresponding Ept element but at least 1 Ept element is orhpaned"
+            )
         elem.append(seg)
 
         # Optional Attributes
@@ -1060,7 +1046,7 @@ class Tuv:
         return elem
 
 
-class Tu:
+class Tu(Structural):
     """
     `Translation unit` - The `Tu` element contains the data for a given
     translation unit.
@@ -1336,7 +1322,7 @@ class Tu:
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
-        elem: _Element = Element("tu")
+        elem = Element("tu")
 
         # Sequence Attributes
         if len(self.notes):
@@ -1402,7 +1388,7 @@ class Tu:
         return elem
 
 
-class Tmx:
+class Tmx(Structural):
     """
     `TMX document` - The `Tmx` element encloses all the other elements of
     the document.
@@ -1459,7 +1445,7 @@ class Tmx:
         TypeError
             Raised by lxml if trying to set a value that is not a `str`
         """
-        elem: _Element = Element("tmx")
+        elem = Element("tmx")
         elem.set("version", "1.4")
         body = SubElement(elem, "body")
         if self.header is None:

@@ -4,17 +4,32 @@ from typing import Literal, MutableSequence, overload
 
 from lxml.etree import Element, _Element
 from typing_extensions import deprecated
-from utils import _add_attrs
+
+from PythonTmx.utils import XmlElementLike
 
 _EmptyElem_ = Element("empty")
 
 
+def _add_attrs(): ...
+
+
 def _parse_inline(
-    elem: _Element | None,
-) -> MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] | str:
-    result: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut] = []
-    if elem is None:
-        return result
+    elem: XmlElementLike,
+) -> MutableSequence[str | Inline] | str:
+    """
+    Internal function that parses a inline element and outputs a list of strings and Inline Elements in document order.
+
+    Parameters
+    ----------
+    elem : _Element
+        The Element to parse.
+
+    Returns
+    -------
+    MutableSequence[str | Inline] | str
+         list of str and Inline Elements
+    """
+    result: MutableSequence[str | Inline] = []
     if elem.text:
         if not len(elem):
             return elem.text
@@ -42,32 +57,72 @@ def _parse_inline(
     return result
 
 
-class Bpt:
-    content: MutableSequence[str | Sub]
-    i: int
-    x: int | None
-    type: str | None
+class Inline:
+    """
+    Base class for Inline elements. Not meant to be instantiated and purely here
+    for inheritance.
+    """
 
-    @overload
-    def __init__(self, *, elem: _Element | None = None) -> None: ...
-    @overload
+    __slots__ = ("_source_elem",)
+
+    _source_elem: XmlElementLike | None
+
+    def __init__(self):
+        raise NotImplementedError
+
+    def to_element(self) -> _Element:
+        raise NotImplementedError
+
+
+class Bpt(Inline):
+    """
+    `Begin paired tag` - The `Bpt` element is used to delimit the beginning of
+    a paired sequence of native codes. Each `Bpt` has a corresponding `Ept`
+    element within the segment.
+    """
+
+    __slots__ = "content", "i", "x", "type"
+    content: str | MutableSequence[str | Sub]
+    """
+    The actual content of the element.
+    """
+    i: int
+    """
+    Used to pair the `Bpt` elements with :class:`Ept` elements. This mechanism
+    provides TMX with support to markup a possibly overlapping range of codes.
+    Must be unique for each `Bpt` within a given
+    `Tuv <PythonTmx.structural.html#structural.Tuv>`_ element.
+    """
+    x: int | None
+    """
+    Used to match inline elements between each
+    `Tuv <PythonTmx.structural.html#structural.Tuv>`_ elements of a given
+    `Tu <PythonTmx.structural.html#structural.Tu>`_ element.
+    Note that an `Ept` element is matched based on the `x` attribute of its
+    corresponding <bpt> element.
+    """
+    type: str | None
+    """
+    The kind of data the element represents.
+    """
+
     def __init__(
         self,
         *,
-        content: MutableSequence[str | Sub],
-        i: int,
+        elem: _Element | None = None,
+        content: str | MutableSequence[str | Sub] | None = None,
+        i: int | None = None,
         x: int | None = None,
         type: str | None = None,
-    ) -> None: ...
-    @overload
-    def __init__(self, **kwargs) -> None: ...
-
-    def __init__(self, **kwargs) -> None:
-        elem: _Element = kwargs.get("elem", _EmptyElem_)
-        self.content = kwargs.get("content", _parse_inline(elem=elem))
-        self.i = kwargs.get("i", elem.get("i"))
-        self.x = kwargs.get("x", elem.get("x"))
-        self.type = kwargs.get("type", elem.get("type"))
+    ) -> None:
+        """
+        Constructor method
+        """
+        elem = elem if elem is not None else _EmptyElem_
+        self.content = content if content is not None else _parse_inline(elem)
+        self.i = i if i is not None else elem.get("i", None)
+        self.x = x if x is not None else elem.get("x", None)
+        self.type = type if type is not None else elem.get("type", None)
         if isinstance(self.i, str):
             try:
                 self.i = int(self.i)
@@ -79,23 +134,31 @@ class Bpt:
             except (TypeError, ValueError):
                 pass
 
-    def to_element(self, force_str: bool = False) -> _Element:
+    def to_element(self) -> _Element:
         elem = Element("bpt")
-        _add_attrs(
-            elem,
-            {"i": self.i, "x": self.x, "type": self.type},
-            ("i",),
-            force_str,
-        )
+        elem.text, elem.tail = "", ""
+        # Required Attributes
+        if self.i is None:
+            raise AttributeError("Attribute 'i' is required for Bpt Elements")
+        elif isinstance(self.i, (int, str)):
+            elem.set("i", str(self.i))
+
+        # Optional Attributes
+        if self.x is not None:
+            elem.set("x", self.x)
+        if self.type is not None:
+            elem.set("type", self.type)
+
+        # Content
         if isinstance(self.content, str):
             elem.text = self.content
         else:
             for item in self.content:
                 if isinstance(item, str):
                     if len(elem):
-                        elem[-1].tail += item  # type:ignore
+                        elem[-1].tail += item
                     else:
-                        elem.tail += item  # type:ignore
+                        elem.tail += item
                 elif isinstance(item, Sub):
                     elem.append(item.to_element())
                     elem[-1].tail = ""
