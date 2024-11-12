@@ -185,6 +185,3 @@ def to_csv(tmx: Tmx, file: PathLike, *, encoding: str = "utf-8") -> None:
                     for tuv in tu.tuvs
                 ]
             )
-
-
-to_csv(from_csv("a.csv", 1, "en", 2, "es"), "b.csv")
