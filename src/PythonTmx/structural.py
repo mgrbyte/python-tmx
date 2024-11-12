@@ -3,8 +3,8 @@ from typing import Literal, MutableSequence, override
 
 from lxml.etree import Element, SubElement, _Element
 
+from PythonTmx import XmlElementLike
 from PythonTmx.inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
-from PythonTmx.utils import XmlElementLike
 
 _Empty_Elem_ = Element("empty")
 
@@ -886,7 +886,9 @@ class Tuv(Structural):
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # Required Attributes
-        self.segment = segment if segment is None else _parse_inline(elem)
+        self.segment = (
+            segment if segment is not None else _parse_inline(elem.find("seg"))
+        )
 
         # Optional Attributes
         self.lang = (
@@ -1014,7 +1016,7 @@ class Tuv(Structural):
         else:
             for item in self.segment:
                 if isinstance(item, str):
-                    if not len(seg):
+                    if len(seg):
                         seg[-1].tail = (
                             seg[-1].tail + item if seg[-1].tail is not None else item
                         )
@@ -1222,7 +1224,6 @@ class Tu(Structural):
         *,
         elem: XmlElementLike | None = None,
         tuid: str | None = None,
-        lang: str | None = None,
         encoding: str | None = None,
         datatype: str | None = None,
         usagecount: int | None = None,
@@ -1252,11 +1253,6 @@ class Tu(Structural):
 
         # Optional Attributes
         self.tuid = tuid if tuid is not None else elem.get("tuid")
-        self.lang = (
-            lang
-            if lang is not None
-            else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
-        )
         self.encoding = encoding if encoding is not None else elem.get("o-encoding")
         self.datatype = datatype if datatype is not None else elem.get("datatype")
         self.usagecount = (
@@ -1474,7 +1470,7 @@ class Tmx(Structural):
             else:
                 self.tus = []
         else:
-            self.tus = []
+            self.tus = tus
 
     def to_element(self) -> XmlElementLike:
         """

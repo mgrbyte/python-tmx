@@ -5,7 +5,7 @@ from typing import Literal, MutableSequence
 from lxml.etree import Element, _Element
 from typing_extensions import deprecated
 
-from PythonTmx.utils import XmlElementLike
+from PythonTmx import XmlElementLike
 
 _Empty_Elem_ = Element("empty")
 
@@ -27,7 +27,7 @@ def _parse_inline(
          list of str and Inline Elements
     """
     result: MutableSequence[str | Inline] = []
-    if elem.text:
+    if elem.text is not None:
         if not len(elem):
             return elem.text
         result.append(elem.text)
@@ -226,11 +226,6 @@ class Ept:
             raise ValueError(
                 "provided element tag does not match the object you're trying to create."
                 f"expected 'ept' but got {elem.tag}"
-            )
-        if elem is not _Empty_Elem_ and elem.tag != "bpt":
-            raise ValueError(
-                "provided element tag does not match the object you're trying to create."
-                f"expected 'bpt' but got {elem.tag}"
             )
         self.content = content if content is not None else _parse_inline(elem)
         self.i = i if i is not None else elem.get("i", None)
@@ -615,7 +610,7 @@ class Ph:
                     'Attribute "pos" must be one of "p", "f", "b"'
                     f"but got {self.assoc.lower()}"
                 )
-        elem.set("assoc", self.assoc.lower())
+            elem.set("assoc", self.assoc.lower())
 
         # Content
         if isinstance(self.content, str):
