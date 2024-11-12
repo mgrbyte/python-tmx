@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, MutableSequence, override
+from typing import Literal, MutableSequence
 
 from lxml.etree import Element, SubElement, _Element
 
@@ -82,7 +82,6 @@ class Map(Structural):
         self.ent = ent if ent is not None else elem.get("ent")
         self.subst = subst if subst is not None else elem.get("subst")
 
-    @override
     def to_element(self) -> _Element:
         """
         Converts the object into an lxml `_Element`, validating that all
@@ -146,8 +145,8 @@ class Ude(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
+        *,
         name: str = None,
         base: str | None = None,
         maps: MutableSequence[Map] | None = None,
@@ -182,7 +181,6 @@ class Ude(Structural):
         else:
             self.maps = maps
 
-    @override
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
@@ -260,8 +258,8 @@ class Note(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
+        *,
         text: str = None,
         lang: str | None = None,
         encoding: str | None = None,
@@ -286,7 +284,6 @@ class Note(Structural):
         )
         self.encoding = encoding if encoding is not None else elem.get("o-encoding")
 
-    @override
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
@@ -361,8 +358,8 @@ class Prop(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
+        *,
         text: str = None,
         type: str = None,
         lang: str | None = None,
@@ -389,7 +386,6 @@ class Prop(Structural):
         )
         self.encoding = encoding if encoding is not None else elem.get("o-encoding")
 
-    @override
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
@@ -548,8 +544,8 @@ class Header(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
+        *,
         creationtool: str = None,
         creationtoolversion: str = None,
         segtype: Literal["block", "paragraph", "sentence", "phrase"] = None,
@@ -857,8 +853,8 @@ class Tuv(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
+        *,
         segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut]
         | str = None,
         lang: str = None,
@@ -972,7 +968,6 @@ class Tuv(Structural):
         else:
             self.props = props
 
-    @override
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
@@ -1221,8 +1216,8 @@ class Tu(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
+        *,
         tuid: str | None = None,
         encoding: str | None = None,
         datatype: str | None = None,
@@ -1338,7 +1333,6 @@ class Tu(Structural):
         else:
             self.tuvs = tuvs
 
-    @override
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
@@ -1380,8 +1374,6 @@ class Tu(Structural):
         # Optional Attributes
         if self.tuid is not None:
             elem.set("tuid", self.tuid)
-        if self.lang is not None:
-            elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
         if self.datatype is not None:
             elem.set("datatype", self.datatype)
         if self.usagecount is not None:
@@ -1450,8 +1442,8 @@ class Tmx(Structural):
 
     def __init__(
         self,
-        *,
         elem: XmlElementLike | None = None,
+        *,
         header: Header = None,
         tus: MutableSequence[Tu] = None,
     ) -> None:
@@ -1493,11 +1485,11 @@ class Tmx(Structural):
         """
         elem = Element("tmx")
         elem.set("version", "1.4")
-        body = SubElement(elem, "body")
         if self.header is None:
             raise AttributeError(
                 "The 'header' attribute of the Tmx element cannot be None"
             )
         elem.append(self.header.to_element())
+        body: _Element = SubElement(elem, "body")
         body.extend(tu.to_element() for tu in self.tus)
         return elem

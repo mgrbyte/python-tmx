@@ -14,7 +14,8 @@ def _parse_inline(
     elem: XmlElementLike,
 ) -> MutableSequence[str | Inline] | str:
     """
-    Internal function that parses a inline element and outputs a list of strings and Inline Elements in document order.
+    Internal function that parses a inline element and outputs a list of
+    strings and Inline Elements in document order.
 
     Parameters
     ----------
@@ -105,8 +106,8 @@ class Bpt(Inline):
 
     def __init__(
         self,
+        elem: XmlElementLike | None = None,
         *,
-        elem: _Element | None = None,
         content: str | MutableSequence[str | Sub] | None = None,
         i: int | None = None,
         x: int | None = None,
@@ -214,8 +215,8 @@ class Ept:
 
     def __init__(
         self,
+        elem: XmlElementLike | None = None,
         *,
-        elem: _Element | None = None,
         content: str | MutableSequence[str | Sub] | None = None,
         i: int | None = None,
     ) -> None:
@@ -318,8 +319,8 @@ class Hi:
 
     def __init__(
         self,
+        elem: XmlElementLike | None = None,
         *,
-        elem: _Element | None = None,
         content: str | MutableSequence[str | Bpt | Ept | It | Ph | Hi] | None = None,
         x: int | None = None,
         type: str | None = None,
@@ -426,8 +427,8 @@ class It:
 
     def __init__(
         self,
+        elem: XmlElementLike | None = None,
         *,
-        elem: _Element | None = None,
         content: str | MutableSequence[str | Sub] | None = None,
         pos: Literal["begin", "end"],
         x: int | None = None,
@@ -549,8 +550,8 @@ class Ph:
 
     def __init__(
         self,
+        elem: XmlElementLike | None = None,
         *,
-        elem: _Element | None = None,
         content: str | MutableSequence[str | Sub] = None,
         x: int | None = None,
         type: str | None = None,
@@ -654,8 +655,8 @@ class Sub:
 
     def __init__(
         self,
+        elem: XmlElementLike | None = None,
         *,
-        elem: _Element | None = None,
         content: str | MutableSequence[str | Sub] = None,
         type: str | None = None,
         datatype: str | None = None,
@@ -754,8 +755,8 @@ class Ut:
 
     def __init__(
         self,
+        elem: XmlElementLike | None = None,
         *,
-        elem: _Element | None = None,
         content: str | MutableSequence[str | Sub] = None,
         x: int | None = None,
     ) -> None:
