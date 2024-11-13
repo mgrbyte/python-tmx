@@ -197,12 +197,17 @@ class Bpt(Inline):
         # Required Attributes
         if self.i is None:
             raise AttributeError("Attribute 'i' is required for Bpt Elements")
-        elif isinstance(self.i, (int, str)):
+        elif isinstance(self.i, int):
             elem.set("i", str(self.i))
+        else:
+            elem.set("i", self.i)
 
         # Optional Attributes
         if self.x is not None:
-            elem.set("x", self.x)
+            if isinstance(self.x, int):
+                elem.set("x", str(self.x))
+            else:
+                elem.set("x", self.x)
         if self.type is not None:
             elem.set("type", self.type)
 
@@ -212,17 +217,24 @@ class Bpt(Inline):
         else:
             for item in self.content:
                 if isinstance(item, str):
+                    # If elem has already has another inline, add or append
+                    # the text as the tail of that element
                     if len(elem):
-                        elem[-1].tail += item
+                        elem[-1].tail = (
+                            elem[-1].tail + item if elem[-1].tail is not None else item
+                        )
+                    # If elem has no inline, add the text as the text of the element
                     else:
-                        elem.tail += item
-                elif isinstance(item, Sub):
-                    elem.append(item.to_element())
-                    elem[-1].tail = ""
+                        elem.text = elem.text + item if elem.text is not None else item
                 else:
-                    raise ValueError(
-                        f"'{type(item)}' Elements are not allowed inside a Bpt Element"
-                    )
+                    # else check if element is allowed and append it
+                    if isinstance(item, Sub):
+                        elem.append(item.to_element())
+                    else:
+                        raise ValueError(
+                            f"'{type(item)}' Elements are not allowed inside a "
+                            "Bpt Element"
+                        )
         return elem
 
 
@@ -289,9 +301,10 @@ class Ept(Inline):
         # Required Attributes
         if self.i is None:
             raise AttributeError("Attribute 'i' is required for Ept Elements")
-        if isinstance(self.i, int):
-            self.i = str(self.i)
-        elem.set("i", self.i)
+        elif isinstance(self.i, int):
+            elem.set("i", str(self.i))
+        else:
+            elem.set("i", self.i)
 
         # Content
         if isinstance(self.content, str):
@@ -299,17 +312,24 @@ class Ept(Inline):
         else:
             for item in self.content:
                 if isinstance(item, str):
+                    # If elem has already has another inline, add or append
+                    # the text as the tail of that element
                     if len(elem):
-                        elem[-1].tail += item
+                        elem[-1].tail = (
+                            elem[-1].tail + item if elem[-1].tail is not None else item
+                        )
+                    # If elem has no inline, add the text as the text of the element
                     else:
-                        elem.tail += item
-                elif isinstance(item, Sub):
-                    elem.append(item.to_element())
-                    elem[-1].tail = ""
+                        elem.text = elem.text + item if elem.text is not None else item
                 else:
-                    raise ValueError(
-                        f"'{type(item)}' Elements are not allowed inside a Ept Element"
-                    )
+                    # else check if element is allowed and append it
+                    if isinstance(item, Sub):
+                        elem.append(item.to_element())
+                    else:
+                        raise ValueError(
+                            f"'{type(item)}' Elements are not allowed inside a "
+                            "Ept Element"
+                        )
         return elem
 
 
@@ -386,8 +406,9 @@ class Hi(Inline):
         # Optional Attributes
         if self.x is not None:
             if isinstance(self.x, int):
-                self.x = str(self.x)
-            elem.set("x", self.x)
+                elem.set("x", str(self.x))
+            else:
+                elem.set("x", self.x)
         if self.type is not None:
             elem.set("type", self.type)
 
@@ -397,17 +418,24 @@ class Hi(Inline):
         else:
             for item in self.content:
                 if isinstance(item, str):
+                    # If elem has already has another inline, add or append
+                    # the text as the tail of that element
                     if len(elem):
-                        elem[-1].tail += item
+                        elem[-1].tail = (
+                            elem[-1].tail + item if elem[-1].tail is not None else item
+                        )
+                    # If elem has no inline, add the text as the text of the element
                     else:
-                        elem.tail += item
-                elif isinstance(item, (Bpt, Ept, It, Ph, Hi)):
-                    elem.append(item.to_element())
-                    elem[-1].tail = ""
+                        elem.text = elem.text + item if elem.text is not None else item
                 else:
-                    raise ValueError(
-                        f"'{type(item)}' Elements are not allowed inside a Hi Element"
-                    )
+                    # else check if element is allowed and append it
+                    if isinstance(item, (Bpt, Ept, It, Ph, Hi)):
+                        elem.append(item.to_element())
+                    else:
+                        raise ValueError(
+                            f"'{type(item)}' Elements are not allowed inside a "
+                            "Hi Element"
+                        )
         return elem
 
 
@@ -446,7 +474,7 @@ class It(Inline):
         elem: XmlElementLike | None = None,
         *,
         content: str | MutableSequence[str | Sub] | None = None,
-        pos: Literal["begin", "end"] = None,
+        pos: Literal["begin", "end"] | None = None,
         x: int | None = None,
         type: str | None = None,
     ) -> None:
@@ -486,18 +514,18 @@ class It(Inline):
         # Required Attributes
         if self.pos is None:
             raise AttributeError("Attribute 'pos' is required for It Elements")
-        if self.pos is None:
-            raise AttributeError("Attribute 'pos' is required for Header Elements")
-        elif self.pos.lower() not in ("begin", "end"):
+        elif self.pos not in ("begin", "end"):
             raise ValueError(
-                'Attribute "pos" must be one of "begin", "end"'
-                f"but got {self.pos.lower()}"
+                'Attribute "pos" must be one of "begin", "end"' f"but got {self.pos}"
             )
-        elem.set("pos", self.pos.lower())
+        elem.set("pos", self.pos)
 
         # Optional Attributes
         if self.x is not None:
-            elem.set("x", self.x)
+            if isinstance(self.x, int):
+                elem.set("x", str(self.x))
+            else:
+                elem.set("x", self.x)
         if self.type is not None:
             elem.set("type", self.type)
 
@@ -507,17 +535,24 @@ class It(Inline):
         else:
             for item in self.content:
                 if isinstance(item, str):
+                    # If elem has already has another inline, add or append
+                    # the text as the tail of that element
                     if len(elem):
-                        elem[-1].tail += item
+                        elem[-1].tail = (
+                            elem[-1].tail + item if elem[-1].tail is not None else item
+                        )
+                    # If elem has no inline, add the text as the text of the element
                     else:
-                        elem.tail += item
-                elif isinstance(item, Sub):
-                    elem.append(item.to_element())
-                    elem[-1].tail = ""
+                        elem.text = elem.text + item if elem.text is not None else item
                 else:
-                    raise ValueError(
-                        f"'{type(item)}' Elements are not allowed inside a It Element"
-                    )
+                    # else check if element is allowed and append it
+                    if isinstance(item, Sub):
+                        elem.append(item.to_element())
+                    else:
+                        raise ValueError(
+                            f"'{type(item)}' Elements are not allowed inside a "
+                            "Ept Element"
+                        )
         return elem
 
 
@@ -559,7 +594,7 @@ class Ph(Inline):
         self,
         elem: XmlElementLike | None = None,
         *,
-        content: str | MutableSequence[str | Sub] = None,
+        content: str | MutableSequence[str | Sub] | None = None,
         x: int | None = None,
         assoc: Literal["p", "f", "b"] | None = None,
     ) -> None:
@@ -598,34 +633,43 @@ class Ph(Inline):
 
         # Optional Attributes
         if self.x is not None:
-            elem.set("x", self.x)
-        if self.type is not None:
-            elem.set("type", self.type)
+            if isinstance(self.x, int):
+                elem.set("x", str(self.x))
+            else:
+                elem.set("x", self.x)
         if self.assoc is not None:
-            if self.assoc.lower() not in ("p", "f", "b"):
+            if self.assoc not in ("p", "f", "b"):
                 raise ValueError(
                     'Attribute "pos" must be one of "p", "f", "b"'
-                    f"but got {self.assoc.lower()}"
+                    f"but got {self.assoc}"
                 )
-            elem.set("assoc", self.assoc.lower())
+            elem.set("assoc", self.assoc)
 
+        # Content
         # Content
         if isinstance(self.content, str):
             elem.text = self.content
         else:
             for item in self.content:
                 if isinstance(item, str):
+                    # If elem has already has another inline, add or append
+                    # the text as the tail of that element
                     if len(elem):
-                        elem[-1].tail += item
+                        elem[-1].tail = (
+                            elem[-1].tail + item if elem[-1].tail is not None else item
+                        )
+                    # If elem has no inline, add the text as the text of the element
                     else:
-                        elem.tail += item
-                elif isinstance(item, Sub):
-                    elem.append(item.to_element())
-                    elem[-1].tail = ""
+                        elem.text = elem.text + item if elem.text is not None else item
                 else:
-                    raise ValueError(
-                        f"'{type(item)}' Elements are not allowed inside a It Element"
-                    )
+                    # else check if element is allowed and append it
+                    if isinstance(item, Sub):
+                        elem.append(item.to_element())
+                    else:
+                        raise ValueError(
+                            f"'{type(item)}' Elements are not allowed inside a "
+                            "Ept Element"
+                        )
         return elem
 
 
@@ -654,7 +698,7 @@ class Sub(Inline):
         self,
         elem: XmlElementLike | None = None,
         *,
-        content: str | MutableSequence[str | Sub] = None,
+        content: str | MutableSequence[str | Sub] | None = None,
         type: str | None = None,
         datatype: str | None = None,
     ) -> None:
@@ -703,17 +747,24 @@ class Sub(Inline):
         else:
             for item in self.content:
                 if isinstance(item, str):
+                    # If elem has already has another inline, add or append
+                    # the text as the tail of that element
                     if len(elem):
-                        elem[-1].tail += item
+                        elem[-1].tail = (
+                            elem[-1].tail + item if elem[-1].tail is not None else item
+                        )
+                    # If elem has no inline, add the text as the text of the element
                     else:
-                        elem.tail += item
-                elif isinstance(item, (Bpt, Ept, It, Ph, Hi)):
-                    elem.append(item.to_element())
-                    elem[-1].tail = ""
+                        elem.text = elem.text + item if elem.text is not None else item
                 else:
-                    raise ValueError(
-                        f"'{type(item)}' Elements are not allowed inside a Sub Element"
-                    )
+                    # else check if element is allowed and append it
+                    if isinstance(item, (Bpt, Ept, It, Hi, Ph)):
+                        elem.append(item.to_element())
+                    else:
+                        raise ValueError(
+                            f"'{type(item)}' Elements are not allowed inside a "
+                            "Ept Element"
+                        )
         return elem
 
 
@@ -751,7 +802,7 @@ class Ut(Inline):
         self,
         elem: XmlElementLike | None = None,
         *,
-        content: str | MutableSequence[str | Sub] = None,
+        content: str | MutableSequence[str | Sub] | None = None,
         x: int | None = None,
     ) -> None:
         """
@@ -789,7 +840,10 @@ class Ut(Inline):
 
         # Optional Attributes
         if self.x is not None:
-            elem.set("x", self.x)
+            if isinstance(self.x, int):
+                elem.set("x", str(self.x))
+            else:
+                elem.set("x", self.x)
 
         # Content
         if isinstance(self.content, str):
@@ -797,15 +851,22 @@ class Ut(Inline):
         else:
             for item in self.content:
                 if isinstance(item, str):
+                    # If elem has already has another inline, add or append
+                    # the text as the tail of that element
                     if len(elem):
-                        elem[-1].tail += item
+                        elem[-1].tail = (
+                            elem[-1].tail + item if elem[-1].tail is not None else item
+                        )
+                    # If elem has no inline, add the text as the text of the element
                     else:
-                        elem.tail += item
-                elif isinstance(item, (Bpt, Ept, It, Ph, Hi)):
-                    elem.append(item.to_element())
-                    elem[-1].tail = ""
+                        elem.text = elem.text + item if elem.text is not None else item
                 else:
-                    raise ValueError(
-                        f"'{type(item)}' Elements are not allowed inside a Sub Element"
-                    )
+                    # else check if element is allowed and append it
+                    if isinstance(item, Sub):
+                        elem.append(item.to_element())
+                    else:
+                        raise ValueError(
+                            f"'{type(item)}' Elements are not allowed inside a "
+                            "Ept Element"
+                        )
         return elem
