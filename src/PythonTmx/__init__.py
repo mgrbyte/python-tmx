@@ -1,4 +1,3 @@
-import re
 from collections.abc import Generator
 from typing import Protocol, Self, TypeVar
 

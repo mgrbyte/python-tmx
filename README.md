@@ -3,7 +3,8 @@
 
 # PythonTmx
 
-PythonTmx is a python library meant to make manipulating Translation Memory Exchange (TMX) files easier and more pythonic.
+PythonTmx is a python library meant to make manipulating Translation Memory
+Exchange (TMX) files easier and more pythonic.
 
 ## Installation
 
@@ -15,7 +16,8 @@ Install from pip
     
 ## Documentation
 
-Full documentation can be found [here](https://https://python-tmx.readthedocs.io/en/stable/)
+Full documentation can be found
+[here](https://python-tmx.readthedocs.io/en/stable/)
 
 ## License
 
