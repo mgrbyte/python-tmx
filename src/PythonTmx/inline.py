@@ -57,8 +57,8 @@ def _parse_inline(
 
 class Inline:
     """
-    Base class for Inline elements. Not meant to be instantiated and purely here
-    for inheritance.
+    Base class for Inline elements. Doesn't contain any logic and is only
+    here for inheritance.
     """
 
     __slots__ = ("_source_elem",)

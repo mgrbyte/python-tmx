@@ -26,17 +26,17 @@ class XmlElementLike(Protocol):
 
     def __init__(self):
         self.tag = "empty"
-        self.text = None
-        self.tail = None
+        self.text = ""
+        self.tail = ""
 
-    def get(self, key: str, default: None = T) -> str | T:
+    def get(self, key: str, default: T | None = None) -> str | T:
         """
         Should any of the element's attribute using a key, and providing a
         default if the key doesn't exists.
         """
         ...
 
-    def find(self, tag: str, **kwargs) -> Self | None:
+    def find(self, tag: str) -> Self | None:
         """
         Should return the first child element with the given tag.
         """
