@@ -3,10 +3,15 @@ This module contains all the structural elements of a tmx file.
 They are the building blocks of a tmx file.
 """
 
+# General Comment: __init__ methods have a bunch of type: ignore comments
+# because we're intentionally ignoring type errors here to let users
+# use the library without having to worry about type errors when creating a
+# tmx object from scratch.
+# Exorting to an Element though is much more strict and will raise an error
+# if the user tries to do something that is not allowed.
 from collections.abc import MutableSequence
 from datetime import datetime
-from logging import warning
-from typing import Literal
+from typing import Literal, no_type_check
 
 from lxml.etree import Element, SubElement, _Element
 
@@ -24,11 +29,102 @@ class Structural:
 
     _source_elem: XmlElementLike | None
 
-    def __init__(self):
-        raise NotImplementedError
+    def __init__(self, **kwargs):
+        if kwargs.get("elem") is not None:
+            elem = kwargs.get("elem")
+        else:
+            elem = _Empty_Elem_
+        if elem is not _Empty_Elem_:
+            if elem.tag != self.__class__.__name__.lower():
+                raise ValueError(
+                    "provided element tag does not match the object you're "
+                    "trying to create, expected "
+                    f"<{self.__class__.__name__.lower()}> but got {elem.tag}"
+                )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
+
+        for attr, value in locals()["kwargs"].items():
+            if attr in ("elem"):
+                continue
+            if attr in self.__slots__:
+                if attr == "text":  # get text from text attribute not attrib dict
+                    setattr(self, attr, value if value is not None else elem.text)
+                elif attr == "header":  # create an empty header if no value
+                    setattr(
+                        self,
+                        attr,
+                        value if value is not None else Header(),
+                    )
+                elif attr in (
+                    "creationdate",
+                    "changedate",
+                    "lastusagedate",
+                ):  # try to coerce datetime values
+                    if isinstance(value, datetime):
+                        setattr(self, attr, value)
+                    elif isinstance(value, str):
+                        try:
+                            setattr(
+                                self, attr, datetime.strptime(value, "%Y%m%dT%H%M%SZ")
+                            )
+                        except ValueError:
+                            setattr(self, attr, value)
+                    else:
+                        setattr(self, attr, value)
+                elif attr == "lang":  # get lang from xml:lang attribute
+                    self.lang = (
+                        value
+                        if value is not None
+                        else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
+                    )
+                elif attr in ("encoding", "tmf"):  # get those from o-attributes
+                    setattr(
+                        self,
+                        attr,
+                        value if value is not None else elem.get(f"o-{attr}"),
+                    )
+                elif attr == "usagecount":  # try to coerce int values
+                    try:
+                        setattr(self, attr, int(value))
+                    except (ValueError, TypeError):
+                        setattr(self, attr, value)
+                elif attr in ("notes", "props", "tus", "tuvs", "udes", "maps"):
+                    setattr(self, attr, value)
+                elif attr == "segment":  # parse segment if needed using parse_inline
+                    setattr(
+                        self,
+                        attr,
+                        value if value is not None else _parse_inline(elem.find("seg")),
+                    )
+            else:  # We're permissive but only with value types, not attributes
+                raise AttributeError(
+                    f"Unexpected attribute '{attr}' for "
+                    f"{self.__class__.__name__} Elements"
+                )
 
     def to_element(self) -> _Element:
         raise NotImplementedError
+
+    # mypy will always complain here since it can't know that the subclasses
+    # will have the props or notes attribute when this is called so we disable
+    # type checking for this method
+    @no_type_check
+    def _parse_children(self, elem: XmlElementLike, mask: set[str]) -> None:
+        for child in elem:
+            if child.tag not in mask:
+                continue
+            if child.tag == "prop":
+                self.props.append = Prop(elem=child)
+            elif child.tag == "note":
+                self.notes.append(Note(elem=child))
+            elif child.tag == "tuv":
+                self.tuvs.append(Tuv(elem=child))
+            elif child.tag == "tu":
+                self.tus.append(Tu(elem=child))
+            elif child.tag == "ude":
+                self.udes.append(Ude(elem=child))
+            elif child.tag == "map":
+                self.maps.append(Map(elem=child))
 
 
 class Map(Structural):
@@ -71,21 +167,10 @@ class Map(Structural):
         """
         Constructor method
         """
-        elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_ and elem.tag != "map":
-            raise ValueError(
-                "provided element tag does not match the object you're "
-                f"trying to create, expected <map> but got {elem.tag}"
-            )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
-
-        # Required Attributes
-        self.unicode = unicode if unicode is not None else elem.get("unicode")
-
-        # Optional Attributes
-        self.code = code if code is not None else elem.get("code")
-        self.ent = ent if ent is not None else elem.get("ent")
-        self.subst = subst if subst is not None else elem.get("subst")
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self) -> _Element:
         """
@@ -115,12 +200,9 @@ class Map(Structural):
         elem.set("unicode", self.unicode)
 
         # Optional Attributes
-        if self.code is not None:
-            elem.set("code", self.code)
-        if self.ent is not None:
-            elem.set("ent", self.ent)
-        if self.subst is not None:
-            elem.set("subst", self.subst)
+        for attr in ("code", "ent", "subst"):
+            if getattr(self, attr) is not None:
+                elem.set(attr, getattr(self, attr))
         return elem
 
 
@@ -157,27 +239,13 @@ class Ude(Structural):
         maps: MutableSequence[Map] | None = None,
     ) -> None:
         """Constructor"""
-        elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_ and elem.tag != "ude":
-            raise ValueError(
-                "provided element tag does not match the object you're "
-                f"trying to create, expected <ude> but got {elem.tag}"
-            )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
-
-        # Required Attributes
-        self.name = name if name is not None else elem.get("name")
-
-        # Optional Attributes
-        self.base = base if base is not None else elem.get("base")
-
-        # Sequence Attributes
-        if maps is None:
-            self.maps = []
-            if len(elem):
-                self.maps.extend(Map(elem=map) for map in elem)
-        else:
-            self.maps = maps
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
+        self._parse_children(
+            elem=elem if elem is not None else _Empty_Elem_, mask={"map"}
+        )
 
     def to_element(self):
         """
@@ -264,26 +332,10 @@ class Note(Structural):
         encoding: str | None = None,
     ) -> None:
         """Constructor"""
-        elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_ and elem.tag != "note":
-            raise ValueError(
-                "provided element tag does not match the object you're "
-                f"trying to create, expected <note> but got {elem.tag}"
-            )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
-
-        # Required Attributes
-        self.text = (
-            text if text is not None else elem.text if elem.text is not None else ""
-        )
-
-        # Optional Attributes
-        self.lang = (
-            lang
-            if lang is not None
-            else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
-        )
-        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self):
         """
@@ -367,27 +419,10 @@ class Prop(Structural):
         encoding: str | None = None,
     ) -> None:
         """Constructor"""
-        elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_ and elem.tag != "prop":
-            raise ValueError(
-                "provided element tag does not match the object you're "
-                f"trying to create, expected <prop> but got {elem.tag}"
-            )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
-
-        # Required Attributes
-        self.type = type if type is not None else elem.get("type")
-        self.text = (
-            text if text is not None else elem.text if elem.text is not None else ""
-        )
-
-        # Optional Attributes
-        self.lang = (
-            lang
-            if lang is not None
-            else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
-        )
-        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self):
         """
@@ -568,112 +603,14 @@ class Header(Structural):
         """
         Constructor Method
         """
-        elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_ and elem.tag != "header":
-            raise ValueError(
-                "provided element tag does not match the object you're "
-                f"trying to create, expected <header> but got {elem.tag}"
-            )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
-
-        # Required Attributes
-        self.creationtool = (
-            creationtool if creationtool is not None else elem.get("creationtool")
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
+        self._parse_children(
+            elem=elem if elem is not None else _Empty_Elem_,
+            mask={"ude", "prop", "note"},
         )
-        self.creationtoolversion = (
-            creationtoolversion
-            if creationtoolversion is not None
-            else elem.get("creationtoolversion")
-        )
-        # special logic for segtype to check the actual value
-        if segtype is None:
-            # We're type checking right below so we can ignore mypy
-            segtype = elem.get("segtype")  # type: ignore
-        if segtype is not None:
-            if segtype in ("block", "paragraph", "sentence", "phrase"):
-                self.segtype = segtype
-            else:
-                warning(
-                    "Attribute 'segtype' must be one of "
-                    '"block", "paragraph", "sentence", "phrase"'
-                    f"but got {segtype.lower()}"
-                )
-                # forcing mypy to ignore since we already warned the user
-                self.segtype = segtype  # type: ignore
-        else:
-            warning(
-                "Attribute 'segtype' must be one of "
-                '"block", "paragraph", "sentence", "phrase"'
-            )
-            self.segtype = None  # type: ignore
-        self.tmf = tmf if tmf is not None else elem.get("o-tmf")
-        self.adminlang = adminlang if adminlang is not None else elem.get("adminlang")
-        self.srclang = srclang if srclang is not None else elem.get("srclang")
-        self.datatype = datatype if datatype is not None else elem.get("datatype")
-        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
-
-        # Optional Attributes
-
-        # datetime attributes
-        if creationdate is None:
-            creationdate = elem.get("creationdate")
-        if isinstance(creationdate, datetime):
-            self.creationdate = creationdate
-        else:
-            try:
-                self.creationdate = datetime.strptime(creationdate, r"%Y%m%dT%H%M%SZ")
-            except (ValueError, TypeError):
-                warning(f"Could not parse creationdate '{creationdate}' as a datetime")
-                # Already warned the user above so we can ignore mypy
-                self.creationdate = creationdate  # type: ignore
-            except Exception as e:
-                raise e
-        if changedate is None:
-            changedate = elem.get("changedate")
-        if isinstance(changedate, datetime):
-            self.changedate = changedate
-        else:
-            try:
-                self.changedate = datetime.strptime(changedate, r"%Y%m%dT%H%M%SZ")
-            except ValueError:
-                warning(f"Could not parse changedate '{changedate}' as a datetime")
-                # Already warned the user above so we can ignore mypy
-                self.changedate = changedate  # type: ignore
-            except Exception as e:
-                raise e
-        # other attributes
-        self.creationid = (
-            creationid if creationid is not None else elem.get("creationid")
-        )
-        self.changeid = changeid if changeid is not None else elem.get("changeid")
-
-        # Sequence Attributes
-        # mask is used to check if we need to grab them from the element or not
-        # to grab avoid iterating the element three times at worst
-        mask: list[str] = []
-        if notes is None:
-            self.notes = []
-            mask.append("notes")
-        if props is None:
-            self.props = []
-            mask.append("props")
-        if udes is None:
-            self.udes = []
-            mask.append("udes")
-        if elem is not None:
-            for child in elem:
-                if child.tag == "note" and "notes" in mask:
-                    self.notes.append(Note(elem=child))
-                elif child.tag == "prop" and "props" in mask:
-                    self.props.append(Prop(elem=child))
-                elif child.tag == "ude" and "udes" in mask:
-                    self.udes.append(Ude(elem=child))
-                else:
-                    warning(
-                        "provided element contain disallowed elements. "
-                        "Only <note>, <prop> and <ude> elements are"
-                        f"allowed in a <header> but got {elem.tag}"
-                    )
 
     def to_element(self):
         """
@@ -891,132 +828,13 @@ class Tuv(Structural):
         props: MutableSequence[Prop] | None = None,
     ) -> None:
         """Constructor Method"""
-        elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_:
-            if elem.tag != "tuv":
-                raise ValueError(
-                    "provided element tag does not match the object you're "
-                    f"trying to create, expected <tuv> but got {elem.tag}"
-                )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
-
-        # Required Attributes
-        if segment is None and elem is not _Empty_Elem_:
-            if (seg := elem.find("seg")) is None:
-                raise ValueError(
-                    "provided <tuv> element does not contain a <seg> element"
-                )
-            else:
-                self.segment = _parse_inline(seg)
-        self.lang = (
-            lang
-            if lang is not None
-            else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
+        self._parse_children(
+            elem=elem if elem is not None else _Empty_Elem_, mask={"prop", "note"}
         )
-
-        # Optional Attributes
-        # str attributes
-        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
-        self.datatype = datatype if datatype is not None else elem.get("datatype")
-        self.changeid = changeid if changeid is not None else elem.get("changeid")
-        self.tmf = tmf if tmf is not None else elem.get("o-tmf")
-
-        # int attributes
-        if usagecount is None:
-            # We're type checking right below so we can ignore mypy
-            usagecount = elem.get("usagecount")  # type: ignore
-        if isinstance(usagecount, int):
-            self.usagecount = usagecount
-        else:
-            try:
-                # We're expecting it to potentially fail so we can ignore mypy
-                self.usagecount = int(usagecount)  # type: ignore
-            except (ValueError, TypeError):
-                warning(f"Could not parse usagecount '{usagecount}' as an int")
-                # Already warned the user above so we can ignore mypy
-                self.usagecount = usagecount  # type: ignore
-            except Exception as e:
-                raise e
-
-        # datetime attributes
-        if lastusagedate is None:
-            lastusagedate = elem.get("lastusagedate")
-        if isinstance(lastusagedate, datetime):
-            self.lastusagedate = lastusagedate
-        else:
-            try:
-                self.lastusagedate = datetime.strptime(lastusagedate, r"%Y%m%dT%H%M%SZ")
-            except ValueError:
-                warning(
-                    f"Could not parse lastusagedate '{lastusagedate}' as a datetime"
-                )
-                # Already warned the user above so we can ignore mypy
-                self.lastusagedate = lastusagedate  # type: ignore
-            except Exception as e:
-                raise e
-        self.creationtool = (
-            creationtool if creationtool is not None else elem.get("creationtool")
-        )
-        self.creationtoolversion = (
-            creationtoolversion
-            if creationtoolversion is not None
-            else elem.get("creationtoolversion")
-        )
-        if creationdate is None:
-            creationdate = elem.get("creationdate")
-        if isinstance(creationdate, datetime):
-            self.creationdate = creationdate
-        else:
-            try:
-                self.creationdate = datetime.strptime(creationdate, r"%Y%m%dT%H%M%SZ")
-            except ValueError:
-                warning(f"Could not parse creationdate '{creationdate}' as a datetime")
-                # Already warned the user above so we can ignore mypy
-                self.creationdate = creationdate  # type: ignore
-            except Exception as e:
-                raise e
-        self.creationid = (
-            creationid if creationid is not None else elem.get("creationid")
-        )
-        if changedate is None:
-            changedate = elem.get("changedate")
-        if isinstance(changedate, datetime):
-            self.changedate = changedate
-        else:
-            try:
-                self.changedate = datetime.strptime(changedate, r"%Y%m%dT%H%M%SZ")
-            except ValueError:
-                warning(f"Could not parse changedate '{changedate}' as a datetime")
-                # Already warned the user above so we can ignore mypy
-                self.changedate = changedate  # type: ignore
-            except Exception as e:
-                raise e
-
-        # Sequence Attributes
-        # mask is used to check if we need to grab them from the element or not
-        # to grab avoid iterating the element three times at worst
-        mask: list[str] = []
-        if notes is None:
-            self.notes = []
-            mask.append("notes")
-        if props is None:
-            self.props = []
-            mask.append("props")
-        if elem is not None:
-            for child in elem:
-                if child.tag == "note" and "notes" in mask:
-                    self.notes.append(Note(elem=child))
-                elif child.tag == "prop" and "props" in mask:
-                    self.props.append(Prop(elem=child))
-                elif child.tag == "seg":
-                    # ignore seg since we dealt with it earlier
-                    pass
-                else:
-                    warning(
-                        "provided element contain disallowed elements. "
-                        "Only <note>, <prop> and elements are"
-                        f"allowed in a <tuv> but got {elem.tag}"
-                    )
 
     def to_element(self):
         """
@@ -1298,147 +1116,14 @@ class Tu(Structural):
         tuvs: MutableSequence[Tuv] | None = None,
     ) -> None:
         """Constructor Method"""
-        elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_:
-            if elem.tag != "tuv":
-                raise ValueError(
-                    "provided element tag does not match the object you're "
-                    f"trying to create, expected <tuv> but got {elem.tag}"
-                )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
-
-        # No Required Attributes
-
-        # Optional Attributes
-        # str attributes
-        self.encoding = encoding if encoding is not None else elem.get("o-encoding")
-        self.datatype = datatype if datatype is not None else elem.get("datatype")
-        self.tuid = tuid if tuid is not None else elem.get("tuid")
-        self.srclang = srclang if srclang is not None else elem.get("srclang")
-        self.changeid = changeid if changeid is not None else elem.get("changeid")
-        self.tmf = tmf if tmf is not None else elem.get("o-tmf")
-        self.creationid = (
-            creationid if creationid is not None else elem.get("creationid")
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
+        self._parse_children(
+            elem=elem if elem is not None else _Empty_Elem_,
+            mask={"tuv", "prop", "note"},
         )
-        self.creationtoolversion = (
-            creationtoolversion
-            if creationtoolversion is not None
-            else elem.get("creationtoolversion")
-        )
-
-        # special logic for segtype to check the actual value
-        if segtype is None:
-            # We're type checking right below so we can ignore mypy
-            segtype = elem.get("segtype")  # type: ignore
-        if segtype is not None:
-            if segtype in ("block", "paragraph", "sentence", "phrase"):
-                self.segtype = segtype
-            else:
-                warning(
-                    "Attribute 'segtype' must be one of "
-                    '"block", "paragraph", "sentence", "phrase"'
-                    f"but got {segtype.lower()}"
-                )
-                # forcing mypy to ignore since we already warned the user
-                self.segtype = segtype  # type: ignore
-        else:
-            warning(
-                "Attribute 'segtype' must be one of "
-                '"block", "paragraph", "sentence", "phrase"'
-            )
-            self.segtype = None  # type: ignore
-
-        # int attributes
-        if usagecount is None:
-            # We're type checking right below so we can ignore mypy
-            usagecount = elem.get("usagecount")  # type: ignore
-        if isinstance(usagecount, int):
-            self.usagecount = usagecount
-        else:
-            try:
-                # We're expecting it to potentially fail so we can ignore mypy
-                self.usagecount = int(usagecount)  # type: ignore
-            except (ValueError, TypeError):
-                warning(f"Could not parse usagecount '{usagecount}' as an int")
-                # Already warned the user above so we can ignore mypy
-                self.usagecount = usagecount  # type: ignore
-            except Exception as e:
-                raise e
-
-        # datetime attributes
-        if lastusagedate is None:
-            lastusagedate = elem.get("lastusagedate")
-        if isinstance(lastusagedate, datetime):
-            self.lastusagedate = lastusagedate
-        else:
-            try:
-                self.lastusagedate = datetime.strptime(lastusagedate, r"%Y%m%dT%H%M%SZ")
-            except ValueError:
-                warning(
-                    f"Could not parse lastusagedate '{lastusagedate}' as a datetime"
-                )
-                # Already warned the user above so we can ignore mypy
-                self.lastusagedate = lastusagedate  # type: ignore
-            except Exception as e:
-                raise e
-        self.creationtool = (
-            creationtool if creationtool is not None else elem.get("creationtool")
-        )
-
-        if creationdate is None:
-            creationdate = elem.get("creationdate")
-        if isinstance(creationdate, datetime):
-            self.creationdate = creationdate
-        else:
-            try:
-                self.creationdate = datetime.strptime(creationdate, r"%Y%m%dT%H%M%SZ")
-            except ValueError:
-                warning(f"Could not parse creationdate '{creationdate}' as a datetime")
-                # Already warned the user above so we can ignore mypy
-                self.creationdate = creationdate  # type: ignore
-            except Exception as e:
-                raise e
-        if changedate is None:
-            changedate = elem.get("changedate")
-        if isinstance(changedate, datetime):
-            self.changedate = changedate
-        else:
-            try:
-                self.changedate = datetime.strptime(changedate, r"%Y%m%dT%H%M%SZ")
-            except ValueError:
-                warning(f"Could not parse changedate '{changedate}' as a datetime")
-                # Already warned the user above so we can ignore mypy
-                self.changedate = changedate  # type: ignore
-            except Exception as e:
-                raise e
-
-        # Sequence Attributes
-        # mask is used to check if we need to grab them from the element or not
-        # to grab avoid iterating the element three times at worst
-        mask: list[str] = []
-        if notes is None:
-            self.notes = []
-            mask.append("notes")
-        if props is None:
-            self.props = []
-            mask.append("props")
-        if tuvs is None:
-            self.tuvs = []
-            mask.append("tuvs")
-        if elem is not None:
-            for child in elem:
-                if child.tag == "note" and "notes" in mask:
-                    self.notes.append(Note(elem=child))
-                elif child.tag == "prop" and "props" in mask:
-                    self.props.append(Prop(elem=child))
-                elif child.tag == "tuv" and "tuvs" in mask:
-                    self.tuvs.append(Tuv(elem=child))
-                else:
-                    warning(
-                        "provided element contain disallowed elements. "
-                        "Only <note>, <prop> and <tuv> elements are"
-                        f"allowed in a <tu> but got {elem.tag}"
-                    )
 
     def to_element(self):
         """
@@ -1546,34 +1231,13 @@ class Tmx(Structural):
         tus: MutableSequence[Tu] | None = None,
     ) -> None:
         """Constructor method"""
-        elem = elem if elem is not None else _Empty_Elem_
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
-        if elem is not _Empty_Elem_:
-            if elem.tag != "tmx":
-                raise ValueError(
-                    "provided element tag does not match the object you're "
-                    f"trying to create, expected <tmx> but got {elem.tag}"
-                )
-            if header is not None:
-                self.header = header
-            else:
-                if (_header := elem.find("header")) is None:
-                    warning(
-                        "provided <tmx> element does not contain a <header> element"
-                    )
-                    # Already warned the user above so we can ignore mypy
-                    self.header = _header  # type: ignore
-                else:
-                    self.header = Header(elem=_header)
-            if tus is not None:
-                self.tus = tus
-            else:
-                if (body := elem.find("body")) is None:
-                    warning("provided <tmx> element does not contain a <body> element")
-                    self.tus = []
-                else:
-                    self.tus = []
-                    self.tus.extend(Tu(elem=tu) for tu in body)
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
+        self._parse_children(
+            elem=elem if elem is not None else _Empty_Elem_, mask={"tu"}
+        )
 
     def to_element(self) -> _Element:
         """
