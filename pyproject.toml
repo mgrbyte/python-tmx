@@ -14,11 +14,11 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
-dependencies = ["lxml"]
+dependencies = ["lxml", "typing_extensions", "types-lxml"]
 
 [project.optional-dependencies]
-docs = ["sphinx","pydata-sphinx-theme", "typing_extensions"]
-dev = ["mypy","types-lxml"]
+docs = ["sphinx","pydata-sphinx-theme"]
+dev = ["mypy", "pytest"]
 
 [project.urls]
 Homepage = "https://github.com/ChonkyYoshi/python-tmx"

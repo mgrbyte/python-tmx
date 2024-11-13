@@ -9,7 +9,7 @@ They are the building blocks of a tmx file.
 # the user tries to do something that is not allowed.
 from collections.abc import MutableSequence
 from datetime import datetime
-from typing import Literal, no_type_check
+from typing import Literal, assert_never, no_type_check
 
 from lxml.etree import Element, SubElement, _Element
 
@@ -40,7 +40,7 @@ class Structural:
                 )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
-        for attr, value in locals()["kwargs"].items():
+        for attr, value in kwargs.items():
             if attr in ("elem"):
                 continue
             if attr in self.__slots__:
@@ -94,12 +94,9 @@ class Structural:
                         value if value is not None else _parse_inline(elem.find("seg")),
                     )
                 else:
-                    setattr(self, attr, value)
-            else:  # We're permissive but only with value types, not attributes
-                raise AttributeError(
-                    f"Unexpected attribute '{attr}' for "
-                    f"{self.__class__.__name__} Elements"
-                )
+                    setattr(self, attr, value if value is not None else elem.get(attr))
+            else:
+                assert_never(attr)
 
     def to_element(self) -> _Element:
         raise NotImplementedError
