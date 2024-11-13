@@ -32,6 +32,9 @@ def _parse_inline(
         if not len(elem):
             return elem.text
         result.append(elem.text)
+    else:
+        if not len(elem):
+            return ""
     for child in elem:
         match child.tag:
             case "bpt":
