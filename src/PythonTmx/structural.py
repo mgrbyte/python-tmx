@@ -21,8 +21,7 @@ from PythonTmx.inline import Inline, _parse_inline
 
 class Structural:
     """
-    Base class for Structural elements. Doesn't contain any logic and is only
-    here for inheritance.
+    Base class for Structural elements. DO NOT USE THIS CLASS DIRECTLY.
     """
 
     __slots__ = ("_source_elem",)
@@ -96,6 +95,8 @@ class Structural:
                         attr,
                         value if value is not None else _parse_inline(elem.find("seg")),
                     )
+                else:
+                    setattr(self, attr, value)
             else:  # We're permissive but only with value types, not attributes
                 raise AttributeError(
                     f"Unexpected attribute '{attr}' for "

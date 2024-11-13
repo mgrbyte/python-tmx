@@ -1,3 +1,14 @@
+"""
+This module contains all the inline elements of a tmx file.
+They are the element that actually contain the text of the translation.
+"""
+
+# General Comment: __init__ methods have a bunch of type: ignore comments
+# because we're intentionally ignoring type errors here to let users
+# use the library without having to worry about type errors when creating a
+# tmx object from scratch.
+# Exorting to an Element though is much more strict and will raise an error
+# if the user tries to do something that is not allowed.
 from __future__ import annotations
 
 from typing import Literal, MutableSequence
@@ -68,8 +79,42 @@ class Inline:
 
     _source_elem: XmlElementLike | None
 
-    def __init__(self):
-        raise NotImplementedError
+    def __init__(self, **kwargs):
+        if kwargs.get("elem") is not None:
+            elem = kwargs.get("elem")
+        else:
+            elem = _Empty_Elem_
+        if elem is not _Empty_Elem_:
+            if elem.tag != self.__class__.__name__.lower():
+                raise ValueError(
+                    "provided element tag does not match the object you're "
+                    "trying to create, expected "
+                    f"<{self.__class__.__name__.lower()}> but got {elem.tag}"
+                )
+        self._source_elem = elem if elem is not _Empty_Elem_ else None
+
+        for attr, value in locals()["kwargs"].items():
+            if attr == "elem":
+                continue
+            if attr in self.__slots__:
+                if attr in ("i", "x"):  # try to coerce int values
+                    try:
+                        setattr(self, attr, int(value))
+                    except (ValueError, TypeError):
+                        setattr(self, attr, value)
+                elif attr == "content":  # parse content if needed using parse_inline
+                    setattr(
+                        self,
+                        attr,
+                        value if value is not None else _parse_inline(elem),
+                    )
+                else:
+                    setattr(self, attr, value)
+            else:  # We're permissive but only with value types, not attributes
+                raise AttributeError(
+                    f"Unexpected attribute '{attr}' for "
+                    f"{self.__class__.__name__} Elements"
+                )
 
     def to_element(self) -> _Element:
         raise NotImplementedError
@@ -119,25 +164,10 @@ class Bpt(Inline):
         """
         Constructor method
         """
-        if elem is not _Empty_Elem_ and elem.tag != "bpt":
-            raise ValueError(
-                "provided element tag does not match the object you're trying to create."
-                f"expected 'bpt' but got {elem.tag}"
-            )
-        self.content = content if content is not None else _parse_inline(elem)
-        self.i = i if i is not None else elem.get("i", None)
-        self.x = x if x is not None else elem.get("x", None)
-        self.type = type if type is not None else elem.get("type", None)
-        if isinstance(self.i, str):
-            try:
-                self.i = int(self.i)
-            except (TypeError, ValueError):
-                pass
-        if isinstance(self.x, str):
-            try:
-                self.x = int(self.x)
-            except (TypeError, ValueError):
-                pass
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self) -> _Element:
         """
@@ -196,7 +226,7 @@ class Bpt(Inline):
         return elem
 
 
-class Ept:
+class Ept(Inline):
     """
     `End paired tag` - The `Ept` element is used to delimit the end of a paired
     sequence of native codes. Each `Ept` has a corresponding `Bpt` element
@@ -226,18 +256,10 @@ class Ept:
         """
         Constructor method
         """
-        if elem is not _Empty_Elem_ and elem.tag != "ept":
-            raise ValueError(
-                "provided element tag does not match the object you're trying to create."
-                f"expected 'ept' but got {elem.tag}"
-            )
-        self.content = content if content is not None else _parse_inline(elem)
-        self.i = i if i is not None else elem.get("i", None)
-        if isinstance(self.i, str):
-            try:
-                self.i = int(self.i)
-            except (TypeError, ValueError):
-                pass
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self) -> _Element:
         """
@@ -291,7 +313,7 @@ class Ept:
         return elem
 
 
-class Hi:
+class Hi(Inline):
     """
     `Highlight` - The `Hi` element delimits a section of text that has special
     meaning, such as a terminological unit, a proper name, an item that should
@@ -331,19 +353,10 @@ class Hi:
         """
         Constructor method
         """
-        if elem is not _Empty_Elem_ and elem.tag != "hi":
-            raise ValueError(
-                "provided element tag does not match the object you're trying to create."
-                f"expected 'hi' but got {elem.tag}"
-            )
-        self.content = content if content is not None else _parse_inline(elem)
-        self.x = x if x is not None else elem.get("x")
-        self.type = type if type is not None else elem.get("type")
-        if isinstance(self.x, str):
-            try:
-                self.x = int(self.x)
-            except (TypeError, ValueError):
-                pass
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self) -> _Element:
         """
@@ -398,7 +411,7 @@ class Hi:
         return elem
 
 
-class It:
+class It(Inline):
     """
     `Isolated tag` - The `It` element is used to delimit a beginning/ending
     sequence of native codes that does not have its corresponding
@@ -433,27 +446,17 @@ class It:
         elem: XmlElementLike | None = None,
         *,
         content: str | MutableSequence[str | Sub] | None = None,
-        pos: Literal["begin", "end"],
+        pos: Literal["begin", "end"] = None,
         x: int | None = None,
         type: str | None = None,
     ) -> None:
         """
         Constructor method
         """
-        if elem is not _Empty_Elem_ and elem.tag != "it":
-            raise ValueError(
-                "provided element tag does not match the object you're trying to create."
-                f"expected 'it' but got {elem.tag}"
-            )
-        self.content = content if content is not None else _parse_inline(elem)
-        self.pos = pos if pos is not None else elem.get("pos", None)
-        self.x = x if x is not None else elem.get("x", None)
-        self.type = type if type is not None else elem.get("type", None)
-        if isinstance(self.x, str):
-            try:
-                self.x = int(self.x)
-            except (TypeError, ValueError):
-                pass
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self) -> _Element:
         """
@@ -518,12 +521,13 @@ class It:
         return elem
 
 
-class Ph:
+class Ph(Inline):
     """
     `Placeholder` - The `Ph` element is used to delimit a sequence of native
     standalone codes in the segment.
     """
 
+    __slots__ = "content", "i", "x", "assoc"
     content: str | MutableSequence[str | Sub]
     """
     The actual content of the element.
@@ -557,26 +561,15 @@ class Ph:
         *,
         content: str | MutableSequence[str | Sub] = None,
         x: int | None = None,
-        type: str | None = None,
         assoc: Literal["p", "f", "b"] | None = None,
     ) -> None:
         """
         Constructor method
         """
-        if elem is not _Empty_Elem_ and elem.tag != "ph":
-            raise ValueError(
-                "provided element tag does not match the object you're trying to create."
-                f"expected 'ph' but got {elem.tag}"
-            )
-        self.content = content if content is not None else _parse_inline(elem)
-        self.x = x if x is not None else elem.get("x", None)
-        self.assoc = assoc if assoc is not None else elem.get("assoc", None)
-        self.type = type if type is not None else elem.get("type", None)
-        if isinstance(self.x, str):
-            try:
-                self.x = int(self.x)
-            except (TypeError, ValueError):
-                pass
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self) -> _Element:
         """
@@ -636,13 +629,14 @@ class Ph:
         return elem
 
 
-class Sub:
+class Sub(Inline):
     """
     `Sub-flow` - The `Sub` element is used to delimit sub-flow text inside a
     sequence of native code, for example: the definition of a footnote or the
     text of title in a HTML anchor element.
     """
 
+    __slots__ = "content", "type", "datatype"
     content: str | MutableSequence[str | Bpt | Ept | It | Ph | Hi]
     """
     The actual content of the element.
@@ -667,14 +661,10 @@ class Sub:
         """
         Constructor method
         """
-        if elem is not _Empty_Elem_ and elem.tag != "sub":
-            raise ValueError(
-                "provided element tag does not match the object you're trying to create."
-                f"expected 'sub' but got {elem.tag}"
-            )
-        self.content = content if content is not None else _parse_inline(elem)
-        self.datatype = datatype if datatype is not None else elem.get("datatype", None)
-        self.type = type if type is not None else elem.get("type", None)
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self) -> _Element:
         """
@@ -732,7 +722,7 @@ class Sub:
     "please check https://www.gala-global.org/tmx-14b#ContentMarkup_Rules to "
     "know with which element to replace it with."
 )
-class Ut:
+class Ut(Inline):
     """
     `Unknown Tag` - The `ut` element is used to delimit a sequence of native
     unknown codes in the segment.
@@ -743,6 +733,7 @@ class Ut:
     https://www.gala-global.org/tmx-14b#ContentMarkup_Rules
     """
 
+    __slots__ = "content", "x"
     content: str | MutableSequence[str | Sub]
     """
     The actual content of the element.
@@ -766,19 +757,10 @@ class Ut:
         """
         Constructor method
         """
-        if elem is not _Empty_Elem_ and elem.tag != "ut":
-            raise ValueError(
-                "provided element tag does not match the object you're trying to create."
-                f"expected 'ut' but got {elem.tag}"
-            )
-        self.content = content if content is not None else _parse_inline(elem)
-        self.x = x if x is not None else elem.get("x", None)
-
-        if isinstance(self.x, str):
-            try:
-                self.x = int(self.x)
-            except (TypeError, ValueError):
-                pass
+        vals = locals()
+        vals.pop("self")
+        vals.pop("__class__")
+        super().__init__(**vals)
 
     def to_element(self) -> _Element:
         """
