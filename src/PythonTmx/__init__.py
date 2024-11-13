@@ -1,4 +1,7 @@
-from typing import Any, Generator, Protocol, Self
+from collections.abc import Generator
+from typing import Protocol, Self, TypeVar
+
+T = TypeVar("T")
 
 
 class XmlElementLike(Protocol):
@@ -21,10 +24,21 @@ class XmlElementLike(Protocol):
     The tail (text `after` the closing tag) of the Element, if any.
     """
 
-    def get(self, key: str, default: None) -> Any:
+    def __init__(self):
+        self.tag = "empty"
+        self.text = None
+        self.tail = None
+
+    def get(self, key: str, default: None = T) -> str | T:
         """
         Should any of the element's attribute using a key, and providing a
         default if the key doesn't exists.
+        """
+        ...
+
+    def find(self, tag: str, **kwargs) -> Self | None:
+        """
+        Should return the first child element with the given tag.
         """
         ...
 
@@ -39,3 +53,6 @@ class XmlElementLike(Protocol):
         """
         Should return the amount of sub elements when calling ``len(element)``
         """
+
+
+_Empty_Elem_ = XmlElementLike()

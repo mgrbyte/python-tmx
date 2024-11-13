@@ -1,18 +1,17 @@
+from collections.abc import MutableSequence
 from datetime import datetime
-from typing import Literal, MutableSequence
+from typing import Literal
 
 from lxml.etree import Element, SubElement, _Element
 
-from PythonTmx import XmlElementLike
+from PythonTmx import XmlElementLike, _Empty_Elem_
 from PythonTmx.inline import Bpt, Ept, Hi, It, Ph, Sub, Ut, _parse_inline
-
-_Empty_Elem_ = Element("empty")
 
 
 class Structural:
     """
-    Base class for Structural elements. Not meant to be instantiated and purely here
-    for inheritance.
+    Base class for Structural elements. Doesn't contain any logic and is only
+    here for inheritance.
     """
 
     __slots__ = ("_source_elem",)
@@ -58,7 +57,10 @@ class Map(Structural):
         self,
         elem: XmlElementLike | None = None,
         *,
-        unicode: str = None,
+        # We want the class creation to be very permissive so have to tell mypy
+        # to ignore incorrect type assignments since we only check for type
+        # correctness during export.
+        unicode: str = None,  # type: ignore
         code: str | None = None,
         ent: str | None = None,
         subst: str | None = None,
@@ -70,7 +72,7 @@ class Map(Structural):
         if elem is not _Empty_Elem_ and elem.tag != "map":
             raise ValueError(
                 "provided element tag does not match the object you're "
-                f"trying to create, expected 'map' but got {elem.tag}"
+                f"trying to create, expected <map> but got {elem.tag}"
             )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
@@ -119,6 +121,9 @@ class Map(Structural):
         return elem
 
 
+Map()
+
+
 class Ude(Structural):
     """
     `User-Defined Encoding` — Used to specify a set of user-defined characters
@@ -147,7 +152,7 @@ class Ude(Structural):
         self,
         elem: XmlElementLike | None = None,
         *,
-        name: str = None,
+        name: str = None,  # type: ignore
         base: str | None = None,
         maps: MutableSequence[Map] | None = None,
     ) -> None:
@@ -156,7 +161,7 @@ class Ude(Structural):
         if elem is not _Empty_Elem_ and elem.tag != "ude":
             raise ValueError(
                 "provided element tag does not match the object you're "
-                f"trying to create, expected 'ude' but got {elem.tag}"
+                f"trying to create, expected <ude> but got {elem.tag}"
             )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
@@ -170,14 +175,7 @@ class Ude(Structural):
         if maps is None:
             self.maps = []
             if len(elem):
-                for map in elem:
-                    if map.tag != "map":
-                        raise ValueError(
-                            "provided element contain disallowed elements. "
-                            "Only <map> elements are allowed in a <ude> "
-                            f"but got {elem.tag}"
-                        )
-                    self.maps.append(Map(elem=map))
+                self.maps.extend(Map(elem=map) for map in elem)
         else:
             self.maps = maps
 
@@ -211,18 +209,19 @@ class Ude(Structural):
         elem.set("name", self.name)
 
         # Optional Attributes/Sequence Attributes
-        if not self.base:
+        if self.base is None:
             if len(self.maps):
                 for map in self.maps:
-                    if not isinstance(map.code, str):
+                    if map.code is not None:
                         raise AttributeError(
                             "Attribute 'base' is required for Ude Elements if "
-                            "they contain 1 or more Map Elements with a 'code' "
-                            "attribute"
+                            "at least 1 or more Map Elements have a 'code'"
+                            " attribute"
                         )
                     elem.append(map.to_element())
         else:
             elem.extend(map.to_element() for map in self.maps)
+            elem.set("base", self.base)
         return elem
 
 
@@ -260,7 +259,7 @@ class Note(Structural):
         self,
         elem: XmlElementLike | None = None,
         *,
-        text: str = None,
+        text: str = None,  # type: ignore
         lang: str | None = None,
         encoding: str | None = None,
     ) -> None:
@@ -269,7 +268,7 @@ class Note(Structural):
         if elem is not _Empty_Elem_ and elem.tag != "note":
             raise ValueError(
                 "provided element tag does not match the object you're "
-                f"trying to create, expected 'note' but got {elem.tag}"
+                f"trying to create, expected <note> but got {elem.tag}"
             )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
@@ -360,8 +359,8 @@ class Prop(Structural):
         self,
         elem: XmlElementLike | None = None,
         *,
-        text: str = None,
-        type: str = None,
+        text: str = None,  # type: ignore
+        type: str = None,  # type: ignore
         lang: str | None = None,
         encoding: str | None = None,
     ) -> None:
@@ -370,7 +369,7 @@ class Prop(Structural):
         if elem is not _Empty_Elem_ and elem.tag != "prop":
             raise ValueError(
                 "provided element tag does not match the object you're "
-                f"trying to create, expected 'prop' but got {elem.tag}"
+                f"trying to create, expected <prop> but got {elem.tag}"
             )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
@@ -546,21 +545,21 @@ class Header(Structural):
         self,
         elem: XmlElementLike | None = None,
         *,
-        creationtool: str = None,
-        creationtoolversion: str = None,
-        segtype: Literal["block", "paragraph", "sentence", "phrase"] = None,
-        tmf: str = None,
-        adminlang: str = None,
-        srclang: str = None,
-        datatype: str = None,
+        creationtool: str = None,  # type: ignore
+        creationtoolversion: str = None,  # type: ignore
+        segtype: Literal["block", "paragraph", "sentence", "phrase"] = None,  # type: ignore
+        tmf: str = None,  # type: ignore
+        adminlang: str = None,  # type: ignore
+        srclang: str = None,  # type: ignore
+        datatype: str = None,  # type: ignore
         encoding: str | None = None,
         creationdate: str | datetime | None = None,
         creationid: str | None = None,
         changedate: str | datetime | None = None,
         changeid: str | None = None,
-        notes: MutableSequence[Note] = None,
-        props: MutableSequence[Prop] = None,
-        udes: MutableSequence[Ude] = None,
+        notes: MutableSequence[Note] = None,  # type: ignore
+        props: MutableSequence[Prop] = None,  # type: ignore
+        udes: MutableSequence[Ude] = None,  # type: ignore
     ) -> None:
         """
         Constructor Method
@@ -569,7 +568,7 @@ class Header(Structural):
         if elem is not _Empty_Elem_ and elem.tag != "header":
             raise ValueError(
                 "provided element tag does not match the object you're "
-                f"trying to create, expected 'header' but got {elem.tag}"
+                f"trying to create, expected <header> but got {elem.tag}"
             )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
@@ -591,63 +590,51 @@ class Header(Structural):
 
         # Optional Attributes
         self.creationdate = (
-            creationdate if creationdate is not None else elem.get("creationdate")
+            creationdate if creationdate is not None else elem.get("creationdate")  # type: ignore
         )
         self.creationid = (
             creationid if creationid is not None else elem.get("creationid")
         )
         self.changedate = (
-            changedate if changedate is not None else elem.get("changedate")
+            changedate if changedate is not None else elem.get("changedate")  # type: ignore
         )
         self.changeid = changeid if changeid is not None else elem.get("changeid")
 
         # Sequence Attributes
+        mask: list[str] = []
         if notes is None:
             self.notes = []
-            if len(elem):
-                for note in elem:
-                    if note.tag != "note":
-                        raise ValueError(
-                            "provided element contain disallowed elements. "
-                            "Only <note>, <prop> and <ude> elements are"
-                            f"allowed in a <header> but got {elem.tag}"
-                        )
-                    self.notes.append(Note(elem=note))
-        else:
-            self.notes = notes
+            mask.append("notes")
         if props is None:
             self.props = []
-            if len(elem):
-                for ude in elem:
-                    if ude.tag != "prop":
-                        raise ValueError(
-                            "provided element contain disallowed elements. "
-                            "Only <note>, <prop> and <ude> elements are"
-                            f"allowed in a <header> but got {elem.tag}"
-                        )
-                    self.props.append(Prop(elem=note))
-        else:
-            self.props = props
+            mask.append("props")
         if udes is None:
             self.udes = []
-            if len(elem):
-                for ude in elem:
-                    if ude.tag != "ude":
-                        raise ValueError(
-                            "provided element contain disallowed elements. "
-                            "Only <note>, <prop> and <ude> elements are"
-                            f"allowed in a <header> but got {elem.tag}"
-                        )
-                    self.udes.append(Ude(elem=note))
-        else:
-            self.udes = udes
+            mask.append("udes")
+        if elem is not None:
+            for child in elem:
+                if child.tag == "note" and "notes" in mask:
+                    self.notes.append(Note(elem=child))
+                elif child.tag == "prop" and "props" in mask:
+                    self.props.append(Prop(elem=child))
+                elif child.tag == "ude" and "udes" in mask:
+                    self.udes.append(Ude(elem=child))
+                else:
+                    raise ValueError(
+                        "provided element contain disallowed elements. "
+                        "Only <note>, <prop> and <ude> elements are"
+                        f"allowed in a <header> but got {elem.tag}"
+                    )
 
+        # Try to coerce datetimes
+        # have to shut up mypy since we're trying to coerce values we don't know
+        # about
         try:
-            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")
+            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")  # type: ignore
         except (TypeError, ValueError):
             pass
         try:
-            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
+            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")  # type: ignore
         except (TypeError, ValueError):
             pass
 
@@ -856,8 +843,8 @@ class Tuv(Structural):
         elem: XmlElementLike | None = None,
         *,
         segment: MutableSequence[str | Bpt | Ept | It | Hi | Ph | Sub | Ut]
-        | str = None,
-        lang: str = None,
+        | str = None,  # type: ignore
+        lang: str = None,  # type: ignore
         encoding: str | None = None,
         datatype: str | None = None,
         usagecount: int | None = None,
@@ -874,17 +861,22 @@ class Tuv(Structural):
     ) -> None:
         """Constructor Method"""
         elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_ and elem.tag != "tuv":
-            raise ValueError(
-                "provided element tag does not match the object you're "
-                f"trying to create, expected 'tuv' but got {elem.tag}"
-            )
+        if elem is not _Empty_Elem_:
+            if elem.tag != "tuv":
+                raise ValueError(
+                    "provided element tag does not match the object you're "
+                    f"trying to create, expected <tuv> but got {elem.tag}"
+                )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
         # Required Attributes
-        self.segment = (
-            segment if segment is not None else _parse_inline(elem.find("seg"))
-        )
+        if segment is None and elem is not _Empty_Elem_:
+            if (seg := elem.find("seg")) is None:
+                raise ValueError(
+                    "provided <tuv> element does not contain a <seg> element"
+                )
+            else:
+                self.segment = _parse_inline(seg)
 
         # Optional Attributes
         self.lang = (
@@ -895,7 +887,7 @@ class Tuv(Structural):
         self.encoding = encoding if encoding is not None else elem.get("o-encoding")
         self.datatype = datatype if datatype is not None else elem.get("datatype")
         self.usagecount = (
-            usagecount if usagecount is not None else elem.get("usagecount")
+            usagecount if usagecount is not None else elem.get("usagecount")  # type: ignore
         )
         self.lastusagedate = (
             lastusagedate if lastusagedate is not None else elem.get("lastusagedate")
@@ -909,64 +901,62 @@ class Tuv(Structural):
             else elem.get("creationtoolversion")
         )
         self.creationdate = (
-            creationdate if creationdate is not None else elem.get("creationdate")
+            creationdate if creationdate is not None else elem.get("creationdate")  # type: ignore
         )
         self.creationid = (
             creationid if creationid is not None else elem.get("creationid")
         )
         self.changedate = (
-            changedate if changedate is not None else elem.get("changedate")
+            changedate if changedate is not None else elem.get("changedate")  # type: ignore
         )
         self.changeid = changeid if changeid is not None else elem.get("changeid")
         self.tmf = tmf if tmf is not None else elem.get("o-tmf")
 
-        # Try to coerce
+        # Try to coerce datetimes and int
+        # have to shut up mypy since we're trying to coerce values we don't know
+        # about
         try:
-            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")
+            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")  # type: ignore
         except (TypeError, ValueError):
             pass
         try:
-            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
+            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")  # type: ignore
         except (TypeError, ValueError):
             pass
         try:
             self.lastusagedate = datetime.strptime(
-                self.lastusagedate, r"%Y%m%dT%H%M%SZ"
+                self.lastusagedate,  # type: ignore
+                r"%Y%m%dT%H%M%SZ",
             )
         except (TypeError, ValueError):
             pass
         try:
-            self.usagecount = int(self.usagecount)
+            self.usagecount = int(self.usagecount)  # type: ignore
         except (TypeError, ValueError):
             pass
 
         # Sequence Attributes
+        mask: list[str] = []
         if notes is None:
             self.notes = []
-            if len(elem):
-                for note in elem:
-                    if note.tag != "note":
-                        raise ValueError(
-                            "provided element contain disallowed elements. "
-                            "Only <note> and <prop> elements are"
-                            f"allowed in a <tuv> but got {elem.tag}"
-                        )
-                    self.notes.append(Note(elem=note))
-        else:
-            self.notes = notes
+            mask.append("notes")
         if props is None:
             self.props = []
-            if len(elem):
-                for ude in elem:
-                    if ude.tag != "prop":
-                        raise ValueError(
-                            "provided element contain disallowed elements. "
-                            "Only <note> and <prop> elements are"
-                            f"allowed in a <tuv> but got {elem.tag}"
-                        )
-                    self.props.append(Prop(elem=note))
-        else:
-            self.props = props
+            mask.append("props")
+        if elem is not None:
+            for child in elem:
+                if child.tag == "note" and "notes" in mask:
+                    self.notes.append(Note(elem=child))
+                elif child.tag == "prop" and "props" in mask:
+                    self.props.append(Prop(elem=child))
+                elif child.tag == "seg":
+                    pass
+                else:
+                    raise ValueError(
+                        "provided element contain disallowed elements. "
+                        "Only <note>, <prop> and elements are"
+                        f"allowed in a <tuv> but got {elem.tag}"
+                    )
 
     def to_element(self):
         """
@@ -1240,7 +1230,7 @@ class Tu(Structural):
         if elem is not _Empty_Elem_ and elem.tag != "tu":
             raise ValueError(
                 "provided element tag does not match the object you're "
-                f"trying to create, expected 'tu' but got {elem.tag}"
+                f"trying to create, expected <tu> but got {elem.tag}"
             )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
 
@@ -1251,10 +1241,10 @@ class Tu(Structural):
         self.encoding = encoding if encoding is not None else elem.get("o-encoding")
         self.datatype = datatype if datatype is not None else elem.get("datatype")
         self.usagecount = (
-            usagecount if usagecount is not None else elem.get("usagecount")
+            usagecount if usagecount is not None else elem.get("usagecount")  # type: ignore
         )
         self.lastusagedate = (
-            lastusagedate if lastusagedate is not None else elem.get("lastusagedate")
+            lastusagedate if lastusagedate is not None else elem.get("lastusagedate")  # type: ignore
         )
         self.creationtool = (
             creationtool if creationtool is not None else elem.get("creationtool")
@@ -1265,73 +1255,67 @@ class Tu(Structural):
             else elem.get("creationtoolversion")
         )
         self.creationdate = (
-            creationdate if creationdate is not None else elem.get("creationdate")
+            creationdate if creationdate is not None else elem.get("creationdate")  # type: ignore
         )
         self.creationid = (
             creationid if creationid is not None else elem.get("creationid")
         )
         self.changedate = (
-            changedate if changedate is not None else elem.get("changedate")
+            changedate if changedate is not None else elem.get("changedate")  # type: ignore
         )
-        self.segtype = segtype if segtype is not None else elem.get("segtype")
+        self.segtype = segtype if segtype is not None else elem.get("segtype")  # type: ignore
         self.changeid = changeid if changeid is not None else elem.get("changeid")
         self.tmf = tmf if tmf is not None else elem.get("o-tmf")
         self.srclang = srclang if srclang is not None else elem.get("srclang")
 
-        # Try to coerce
+        # Try to coerce datetimes and int
+        # have to shut up mypy since we're trying to coerce values we don't know
+        # about
         try:
-            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")
+            self.creationdate = datetime.strptime(self.creationdate, r"%Y%m%dT%H%M%SZ")  # type: ignore
         except (TypeError, ValueError):
             pass
         try:
-            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")
+            self.changedate = datetime.strptime(self.changedate, r"%Y%m%dT%H%M%SZ")  # type: ignore
         except (TypeError, ValueError):
             pass
         try:
             self.lastusagedate = datetime.strptime(
-                self.lastusagedate, r"%Y%m%dT%H%M%SZ"
+                self.lastusagedate,  # type: ignore
+                r"%Y%m%dT%H%M%SZ",
             )
         except (TypeError, ValueError):
             pass
         try:
-            self.usagecount = int(self.usagecount)
+            self.usagecount = int(self.usagecount)  # type: ignore
         except (TypeError, ValueError):
             pass
 
         # Sequence Attributes
+        mask: list[str] = []
         if notes is None:
-            if len(elem):
-                self.notes = [
-                    Note(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "note"
-                ]
-            else:
-                self.notes = []
-        else:
-            self.notes = notes
+            self.notes = []
+            mask.append("notes")
         if props is None:
-            if len(elem):
-                self.props = [
-                    Prop(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "prop"
-                ]
-            else:
-                self.props = []
-        else:
-            self.props = props
+            self.props = []
+            mask.append("props")
         if tuvs is None:
-            if len(elem):
-                self.tuvs = [
-                    Tuv(elem=direct_child)
-                    for direct_child in elem
-                    if direct_child.tag == "tuv"
-                ]
-            else:
-                self.tuvs = []
-        else:
-            self.tuvs = tuvs
+            self.tuvs = []
+            mask.append("tuvs")
+        if elem is not None:
+            for child in elem:
+                if child.tag == "note" and "notes" in mask:
+                    self.notes.append(Note(elem=child))
+                elif child.tag == "prop" and "props" in mask:
+                    self.props.append(Prop(elem=child))
+                elif child.tag == "tuv":
+                    self.tuvs.append(Tuv(elem=child))
+                else:
+                    raise ValueError(
+                        "provided element contain disallowed elements. "
+                        "Only <note>, <prop> <tuv> and elements are"
+                        f"allowed in a <tu> but got {elem.tag}"
+                    )
 
     def to_element(self):
         """
@@ -1444,27 +1428,38 @@ class Tmx(Structural):
         self,
         elem: XmlElementLike | None = None,
         *,
-        header: Header = None,
-        tus: MutableSequence[Tu] = None,
+        header: Header = None,  # type: ignore
+        tus: MutableSequence[Tu] = None,  # type: ignore
     ) -> None:
         """Constructor method"""
         elem = elem if elem is not None else _Empty_Elem_
-        if elem is not _Empty_Elem_ and elem.tag != "tmx":
-            raise ValueError(
-                "provided element tag does not match the object you're "
-                f"trying to create, expected 'tmx' but got {elem.tag}"
-            )
         self._source_elem = elem if elem is not _Empty_Elem_ else None
-        self.header = header if header is not None else Header(elem=elem.find("header"))
-        if tus is None:
-            if (body := elem.find("body")) is not None and len(body):
-                self.tus.extend(Tu(elem=tu) for tu in body if tu.tag == "tu")
+        if elem is not _Empty_Elem_:
+            if elem.tag != "tmx":
+                raise ValueError(
+                    "provided element tag does not match the object you're "
+                    f"trying to create, expected <tmx> but got {elem.tag}"
+                )
+            if elem.find("header") is None:
+                raise ValueError(
+                    "provided <tmx> element does not contain a <header> element"
+                )
             else:
-                self.tus = []
-        else:
-            self.tus = tus
+                self.header = (
+                    header if header is not None else Header(elem=elem.find("header"))
+                )
+            if (body := elem.find("body")) is None:
+                raise ValueError(
+                    "provided <tmx> element does not contain a <body> element"
+                )
+            else:
+                if tus:
+                    self.tus = tus
+                else:
+                    self.tus = []
+                    self.tus.extend(Tu(elem=tu) for tu in body)
 
-    def to_element(self) -> XmlElementLike:
+    def to_element(self) -> _Element:
         """
         Converts the object into an lxml `_Element`. Always sets the `version`
         attribute to "1.4b" and converts the header and all the
@@ -1490,6 +1485,6 @@ class Tmx(Structural):
                 "The 'header' attribute of the Tmx element cannot be None"
             )
         elem.append(self.header.to_element())
-        body: _Element = SubElement(elem, "body")
-        body.extend(tu.to_element() for tu in self.tus)
+        body = SubElement(elem, "body")
+        body.extend([tu.to_element() for tu in self.tus])
         return elem
