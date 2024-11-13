@@ -86,7 +86,7 @@ class Structural:
                     except (ValueError, TypeError):
                         setattr(self, attr, value)
                 elif attr in ("notes", "props", "tus", "tuvs", "udes", "maps"):
-                    setattr(self, attr, value)
+                    setattr(self, attr, value if value is not None else [])
                 elif attr == "segment":  # parse segment if needed using parse_inline
                     setattr(
                         self,

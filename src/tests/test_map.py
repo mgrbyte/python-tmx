@@ -10,7 +10,7 @@ class TestMap:
     # ==========================================================================
     #     Tests the creation of a Map
     # ==========================================================================
-    def test_create_empty_map(self):
+    def test_can_create_empty_map(self):
         """
         Test that an empty Map can be created
         """
@@ -19,11 +19,13 @@ class TestMap:
         assert map.code is None
         assert map.ent is None
         assert map.subst is None
+        assert map._source_elem is None
 
-    def test_create_map_from_lxml_element(self):
+    def test_can_create_map_from_element(self):
         """
-        Test that a Map can be created from an lxml element
+        Test that a Map can be created from an xml element
         """
+        # Check lxml
         elem = lxmlET.fromstring(
             """<map unicode="test value for unicode" code="test value for code"
             ent="test value for ent" subst="test value for subst" />"""
@@ -33,6 +35,18 @@ class TestMap:
         assert map.code == "test value for code"
         assert map.ent == "test value for ent"
         assert map.subst == "test value for subst"
+        assert map._source_elem is elem
+        # Check ElementTree
+        elem = stdET.fromstring(
+            """<map unicode="test value for unicode" code="test value for code"
+            ent="test value for ent" subst="test value for subst" />"""
+        )
+        map = Map(elem)
+        assert map.unicode == "test value for unicode"
+        assert map.code == "test value for code"
+        assert map.ent == "test value for ent"
+        assert map.subst == "test value for subst"
+        assert map._source_elem is elem
 
     def test_create_map_from_wrong_element_tag(self):
         """
@@ -46,25 +60,13 @@ class TestMap:
         with pytest.raises(ValueError):
             Map(elem)
 
-    def test_create_map_from_stdlib_element(self):
+    def test_create_map_from_element_override_values(self):
         """
-        Test that a Map can be created from a stdlib Element
+        Test that a Map can be created from an xml element with keyword
+        arguments and that the keyword arguments override the values in the
+        element
         """
-        elem = stdET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst" />"""
-        )
-        map = Map(elem)
-        assert map.unicode == "test value for unicode"
-        assert map.code == "test value for code"
-        assert map.ent == "test value for ent"
-        assert map.subst == "test value for subst"
-
-    def test_create_map_from_lxml_element_with_keyword_arguments(self):
-        """
-        Test that a Map can be created from an lxml element with keyword
-        arguments
-        """
+        # Check lxml
         elem = lxmlET.fromstring(
             """<map unicode="test value for unicode" code="test value for code"
             ent="test value for ent" subst="test value for subst" />"""
@@ -78,12 +80,7 @@ class TestMap:
         assert map.code == "override value for code"
         assert map.ent == "test value for ent"
         assert map.subst == "test value for subst"
-
-    def test_create_map_from_stdlib_element_with_keyword_arguments(self):
-        """
-        Test that a Map can be created from a stdlib Element with keyword
-        arguments
-        """
+        # Check ElementTree
         elem = stdET.fromstring(
             """<map unicode="test value for unicode" code="test value for code"
             ent="test value for ent" subst="test value for subst" />"""
@@ -98,11 +95,12 @@ class TestMap:
         assert map.ent == "test value for ent"
         assert map.subst == "test value for subst"
 
-    def test_create_map_from_lxml_element_with_unknown_attribute(self):
+    def test_create_map_from_element_with_unknown_attribute(self):
         """
-        Test that a Map can be created from an lxml element with an unknown
-        attribute and that the ubnknown attribute is not in the Map's __dir__()
+        Test that a Map can be created from an xml element with an unknown
+        attribute and that the unknown attribute is not in the Map's __dir__()
         """
+        # Check lxml
         elem = lxmlET.fromstring(
             """<map unicode="test value for unicode" code="test value for code"
             ent="test value for ent" subst="test value for subst"
@@ -114,14 +112,18 @@ class TestMap:
         assert map.ent == "test value for ent"
         assert map.subst == "test value for subst"
         assert "unknown" not in map.__dir__()
-
-    def test_add_unknown_attribute_to_map(self):
-        """
-        Test that a Map won't accept an unknown attribute
-        """
-        map = Map()
-        with pytest.raises(AttributeError):
-            map.unknown = "test value for unknown"
+        # Check ElementTree
+        elem = stdET.fromstring(
+            """<map unicode="test value for unicode" code="test value for code"
+            ent="test value for ent" subst="test value for subst"
+            unknown="test value for unknown" />"""
+        )
+        map = Map(elem)
+        assert map.unicode == "test value for unicode"
+        assert map.code == "test value for code"
+        assert map.ent == "test value for ent"
+        assert map.subst == "test value for subst"
+        assert "unknown" not in map.__dir__()
 
     def test_create_map_with_non_string_attribute_value(self):
         """
@@ -159,11 +161,12 @@ class TestMap:
         assert elem.get("ent") == "test value for ent"
         assert elem.get("subst") == "test value for subst"
 
-    def test_export_map_from_lxml_element(self):
+    def test_export_map_from_element(self):
         """
-        Test that a Map can be exported from an lxml element and is the same
+        Test that a Map can be created from an xml element and is the same
         as the original
         """
+        # Check lxml
         elem = lxmlET.fromstring(
             """<map unicode="test value for unicode" code="test value for code"
             ent="test value for ent" subst="test value for subst" />"""
@@ -176,12 +179,7 @@ class TestMap:
         assert elem.get("code") == new_elem.get("code")
         assert elem.get("ent") == new_elem.get("ent")
         assert elem.get("subst") == new_elem.get("subst")
-
-    def test_export_map_from_stdlib_element(self):
-        """
-        Test that a Map can be exported from a stdlib Element and is the same
-        as the original
-        """
+        # Check ElementTree
         elem = stdET.fromstring(
             """<map unicode="test value for unicode" code="test value for code"
             ent="test value for ent" subst="test value for subst" />"""
@@ -219,3 +217,28 @@ class TestMap:
         )
         with pytest.raises(TypeError):
             map.to_element()
+
+    # ==========================================================================
+    #     Tests the attributes of a Map
+    # ==========================================================================
+    def test_add_unknown_attribute_to_map(self):
+        """
+        Test that a Map won't accept an unknown attribute
+        """
+        map = Map()
+        with pytest.raises(AttributeError):
+            map.unknown = "test value for unknown"
+
+    def test_non_string_attribute_value_to_map(self):
+        """
+        Test that any Map attribute can be set to non-string value
+        """
+        map = Map()
+        map.unicode = 1
+        map.code = (1, 2)
+        map.ent = [1, 2]
+        map.subst = {1, 2}
+        assert map.unicode == 1
+        assert map.code == (1, 2)
+        assert map.ent == [1, 2]
+        assert map.subst == {1, 2}
