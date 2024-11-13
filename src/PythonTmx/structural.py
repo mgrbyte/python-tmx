@@ -3,12 +3,10 @@ This module contains all the structural elements of a tmx file.
 They are the building blocks of a tmx file.
 """
 
-# General Comment: __init__ methods have a bunch of type: ignore comments
-# because we're intentionally ignoring type errors here to let users
-# use the library without having to worry about type errors when creating a
-# tmx object from scratch.
-# Exorting to an Element though is much more strict and will raise an error
-# if the user tries to do something that is not allowed.
+# General Comment: We're intentionally letting users use the library without
+# having to worry about type errors when creating a tmx object from scratch.
+# Exorting to an Element though is much more strict and will raise an error if
+# the user tries to do something that is not allowed.
 from collections.abc import MutableSequence
 from datetime import datetime
 from typing import Literal, no_type_check
