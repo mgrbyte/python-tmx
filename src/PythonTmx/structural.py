@@ -57,15 +57,20 @@ class Structural:
                     "changedate",
                     "lastusagedate",
                 ):  # try to coerce datetime values
-                    if isinstance(value, datetime):
-                        setattr(self, attr, value)
-                    elif isinstance(value, str):
+                    if value is None:
+                        if elem.get(attr) is not None:
+                            value = elem.get(attr)
+                    if isinstance(value, str):
                         try:
                             setattr(
-                                self, attr, datetime.strptime(value, "%Y%m%dT%H%M%SZ")
+                                self,
+                                attr,
+                                datetime.strptime(value, "%Y%m%dT%H%M%SZ"),
                             )
                         except ValueError:
                             setattr(self, attr, value)
+                    elif isinstance(value, datetime):
+                        setattr(self, attr, value)
                     else:
                         setattr(self, attr, value)
                 elif attr == "lang":  # get lang from xml:lang attribute
@@ -100,6 +105,14 @@ class Structural:
             else:
                 assert_never(attr)
 
+    def __eq__(self, value) -> bool:
+        if not isinstance(value, type(self)):
+            return False
+        for attr in self.__slots__:
+            if getattr(self, attr) != getattr(value, attr):
+                return False
+        return True
+
     def to_element(self) -> _Element:
         raise NotImplementedError
 
@@ -112,7 +125,7 @@ class Structural:
             if child.tag not in mask:
                 continue
             if child.tag == "prop":
-                self.props.append = Prop(elem=child)
+                self.props.append(Prop(elem=child))
             elif child.tag == "note":
                 self.notes.append(Note(elem=child))
             elif child.tag == "tuv":
