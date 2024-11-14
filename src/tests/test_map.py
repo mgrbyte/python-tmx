@@ -6,20 +6,41 @@ import pytest
 from PythonTmx.structural import Map
 
 
-class TestCreateMap:
+class TestMap:
+    correct_lxml = lxmlET.fromstring(
+        """<map unicode="lxml test value for unicode" code="lxml test value for code"
+        ent="lxml test value for ent" subst="lxml test value for subst" />"""
+    )
+    correct_stdlib = stdET.fromstring(
+        """<map unicode="stdlib test value for unicode" code="stdlib test value for code"
+        ent="stdlib test value for ent" subst="stdlib test value for subst" />"""
+    )
+    wrong_lxml = lxmlET.fromstring("""<wrongmap />""")
+    wrong_stdlib = stdET.fromstring("""<wrongmap />""")
+    unknown_lxml = lxmlET.fromstring(
+        """<map unicode="test value for unicode" code="test value for code"
+        ent="test value for ent" subst="test value for subst"
+        unknown="test value for unknown" />"""
+    )
+    unknown_stdlib = stdET.fromstring(
+        """<map unicode="test value for unicode" code="test value for code"
+        ent="test value for ent" subst="test value for subst"
+        unknown="test value for unknown" />"""
+    )
+
     # ==========================================================================
     #     Tests the creation of a Map
     # ==========================================================================
-    def test_can_create_empty_map(self):
+    def test_create_empty_map(self):
         """
         Test that an empty Map can be created
         """
-        map = Map()
-        assert map.unicode is None
-        assert map.code is None
-        assert map.ent is None
-        assert map.subst is None
-        assert map._source_elem is None
+        empty_map = Map()
+        assert empty_map.unicode is None
+        assert empty_map.code is None
+        assert empty_map.ent is None
+        assert empty_map.subst is None
+        assert empty_map._source_elem is None
 
     def test_create_map_from_element(self):
         """
@@ -27,27 +48,19 @@ class TestCreateMap:
         Test both lxml and stdlib
         """
         # Check lxml
-        elem = lxmlET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst" />"""
-        )
-        map = Map(elem)
-        assert map.unicode == "test value for unicode"
-        assert map.code == "test value for code"
-        assert map.ent == "test value for ent"
-        assert map.subst == "test value for subst"
-        assert map._source_elem is elem
+        lxml_map = Map(self.correct_lxml)
+        assert lxml_map.unicode == "lxml test value for unicode"
+        assert lxml_map.code == "lxml test value for code"
+        assert lxml_map.ent == "lxml test value for ent"
+        assert lxml_map.subst == "lxml test value for subst"
+        assert lxml_map._source_elem is self.correct_lxml
         # Check ElementTree
-        elem = stdET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst" />"""
-        )
-        map = Map(elem)
-        assert map.unicode == "test value for unicode"
-        assert map.code == "test value for code"
-        assert map.ent == "test value for ent"
-        assert map.subst == "test value for subst"
-        assert map._source_elem is elem
+        stdlb_map = Map(self.correct_stdlib)
+        assert stdlb_map.unicode == "stdlib test value for unicode"
+        assert stdlb_map.code == "stdlib test value for code"
+        assert stdlb_map.ent == "stdlib test value for ent"
+        assert stdlb_map.subst == "stdlib test value for subst"
+        assert stdlb_map._source_elem is self.correct_stdlib
 
     def test_create_map_from_wrong_element_tag(self):
         """
@@ -55,12 +68,12 @@ class TestCreateMap:
         Test both lxml and stdlib
         """
         # Check lxml
-        elem = lxmlET.fromstring("""<wrongmap />""")
         with pytest.raises(ValueError):
-            Map(elem)
+            Map(self.wrong_lxml)
 
         # Check ElementTree
-        elem = stdET.fromstring("""<wrongmap />""")
+        with pytest.raises(ValueError):
+            Map(self.wrong_stdlib)
 
     def test_create_map_from_element_override_values(self):
         """
@@ -70,33 +83,25 @@ class TestCreateMap:
         Test both lxml and stdlib
         """
         # Check lxml
-        elem = lxmlET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst" />"""
-        )
-        map = Map(
-            elem,
+        lxml_map = Map(
+            self.correct_lxml,
             unicode="override value for unicode",
             code="override value for code",
         )
-        assert map.unicode == "override value for unicode"
-        assert map.code == "override value for code"
-        assert map.ent == "test value for ent"
-        assert map.subst == "test value for subst"
+        assert lxml_map.unicode == "override value for unicode"
+        assert lxml_map.code == "override value for code"
+        assert lxml_map.ent == "lxml test value for ent"
+        assert lxml_map.subst == "lxml test value for subst"
         # Check ElementTree
-        elem = stdET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst" />"""
-        )
-        map = Map(
-            elem,
+        stdlib_map = Map(
+            self.correct_stdlib,
             unicode="override value for unicode",
             code="override value for code",
         )
-        assert map.unicode == "override value for unicode"
-        assert map.code == "override value for code"
-        assert map.ent == "test value for ent"
-        assert map.subst == "test value for subst"
+        assert stdlib_map.unicode == "override value for unicode"
+        assert stdlib_map.code == "override value for code"
+        assert stdlib_map.ent == "stdlib test value for ent"
+        assert stdlib_map.subst == "stdlib test value for subst"
 
     def test_create_map_from_element_with_unknown_attribute(self):
         """
@@ -105,24 +110,14 @@ class TestCreateMap:
         Test both lxml and stdlib
         """
         # Check lxml
-        elem = lxmlET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst"
-            unknown="test value for unknown" />"""
-        )
-        map = Map(elem)
+        map = Map(self.unknown_lxml)
         assert map.unicode == "test value for unicode"
         assert map.code == "test value for code"
         assert map.ent == "test value for ent"
         assert map.subst == "test value for subst"
         assert "unknown" not in map.__dir__()
         # Check ElementTree
-        elem = stdET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst"
-            unknown="test value for unknown" />"""
-        )
-        map = Map(elem)
+        map = Map(self.unknown_stdlib)
         assert map.unicode == "test value for unicode"
         assert map.code == "test value for code"
         assert map.ent == "test value for ent"
@@ -150,8 +145,6 @@ class TestCreateMap:
         map = Map(unicode=1)
         assert map.unicode == 1
 
-
-class TestExportMap:
     # ==========================================================================
     #     Tests the export of a Map
     # ==========================================================================
@@ -188,31 +181,23 @@ class TestExportMap:
         Test both lxml and stdlib
         """
         # Check lxml
-        elem = lxmlET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst" />"""
-        )
-        map = Map(elem)
-        new_elem = map.to_element()
-        assert new_elem.tag == elem.tag
-        assert len(elem) == len(new_elem)
-        assert elem.get("unicode") == new_elem.get("unicode")
-        assert elem.get("code") == new_elem.get("code")
-        assert elem.get("ent") == new_elem.get("ent")
-        assert elem.get("subst") == new_elem.get("subst")
+        map = Map(self.correct_lxml)
+        new_lxml_elem = map.to_element()
+        assert new_lxml_elem.tag == new_lxml_elem.tag
+        assert len(new_lxml_elem) == len(self.correct_lxml)
+        assert new_lxml_elem.get("unicode") == self.correct_lxml.get("unicode")
+        assert new_lxml_elem.get("code") == self.correct_lxml.get("code")
+        assert new_lxml_elem.get("ent") == self.correct_lxml.get("ent")
+        assert new_lxml_elem.get("subst") == self.correct_lxml.get("subst")
         # Check ElementTree
-        elem = stdET.fromstring(
-            """<map unicode="test value for unicode" code="test value for code"
-            ent="test value for ent" subst="test value for subst" />"""
-        )
-        map = Map(elem)
-        new_elem = map.to_element()
-        assert new_elem.tag == elem.tag
-        assert len(elem) == len(new_elem)
-        assert elem.get("unicode") == new_elem.get("unicode")
-        assert elem.get("code") == new_elem.get("code")
-        assert elem.get("ent") == new_elem.get("ent")
-        assert elem.get("subst") == new_elem.get("subst")
+        map = Map(self.correct_stdlib)
+        new_stdlib_elem = map.to_element()
+        assert new_stdlib_elem.tag == self.correct_stdlib.tag
+        assert len(new_lxml_elem) == len(self.correct_stdlib)
+        assert new_stdlib_elem.get("unicode") == self.correct_stdlib.get("unicode")
+        assert new_stdlib_elem.get("code") == self.correct_stdlib.get("code")
+        assert new_stdlib_elem.get("ent") == self.correct_stdlib.get("ent")
+        assert new_stdlib_elem.get("subst") == self.correct_stdlib.get("subst")
 
     def test_export_map_missing_required_attributes(self):
         """
