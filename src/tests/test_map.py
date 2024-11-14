@@ -6,7 +6,7 @@ import pytest
 from PythonTmx.structural import Map
 
 
-class TestMap:
+class TestCreateMap:
     # ==========================================================================
     #     Tests the creation of a Map
     # ==========================================================================
@@ -21,7 +21,7 @@ class TestMap:
         assert map.subst is None
         assert map._source_elem is None
 
-    def test_can_create_map_from_element(self):
+    def test_create_map_from_element(self):
         """
         Test that a Map can be created from an xml element
         Test both lxml and stdlib
@@ -129,6 +129,20 @@ class TestMap:
         assert map.subst == "test value for subst"
         assert "unknown" not in map.__dir__()
 
+    def test_create_or_add_map_with_unknown_attribute(self):
+        """
+        Test that a Map cannot be created if passing an unknown attribute
+        """
+        with pytest.raises(TypeError):
+            Map(
+                name="lxml test value for name",
+                base="lxml test value for base",
+                unknown="should not appear",
+            )
+        map = Map()
+        with pytest.raises(AttributeError):
+            map.unknown = "test value for unknown"
+
     def test_create_map_with_non_string_attribute_value(self):
         """
         Test that a Map can be created with a non-string attribute value
@@ -136,6 +150,8 @@ class TestMap:
         map = Map(unicode=1)
         assert map.unicode == 1
 
+
+class TestExportMap:
     # ==========================================================================
     #     Tests the export of a Map
     # ==========================================================================
@@ -222,28 +238,3 @@ class TestMap:
         )
         with pytest.raises(TypeError):
             map.to_element()
-
-    # ==========================================================================
-    #     Tests the attributes of a Map
-    # ==========================================================================
-    def test_add_unknown_attribute_to_map(self):
-        """
-        Test that a Map won't accept an unknown attribute
-        """
-        map = Map()
-        with pytest.raises(AttributeError):
-            map.unknown = "test value for unknown"
-
-    def test_non_string_attribute_value_to_map(self):
-        """
-        Test that any Map attribute can be set to non-string value
-        """
-        map = Map()
-        map.unicode = 1
-        map.code = (1, 2)
-        map.ent = [1, 2]
-        map.subst = {1, 2}
-        assert map.unicode == 1
-        assert map.code == (1, 2)
-        assert map.ent == [1, 2]
-        assert map.subst == {1, 2}

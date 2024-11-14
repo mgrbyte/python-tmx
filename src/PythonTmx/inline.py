@@ -9,7 +9,8 @@ They are the element that actually contain the text of the translation.
 # the user tries to do something that is not allowed.
 from __future__ import annotations
 
-from typing import Literal, MutableSequence
+from collections.abc import MutableSequence
+from typing import Literal
 
 from lxml.etree import Element, _Element
 from typing_extensions import deprecated

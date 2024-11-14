@@ -7,7 +7,7 @@ They are the building blocks of a tmx file.
 # having to worry about type errors when creating a tmx object from scratch.
 # Exorting to an Element though is much more strict and will raise an error if
 # the user tries to do something that is not allowed.
-from collections.abc import MutableSequence
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Literal, assert_never, no_type_check
 
@@ -69,10 +69,12 @@ class Structural:
                     else:
                         setattr(self, attr, value)
                 elif attr == "lang":  # get lang from xml:lang attribute
-                    self.lang = (
+                    setattr(
+                        self,
+                        attr,
                         value
                         if value is not None
-                        else elem.get("{http://www.w3.org/XML/1998/namespace}lang")
+                        else elem.get("{http://www.w3.org/XML/1998/namespace}lang"),
                     )
                 elif attr in ("encoding", "tmf"):  # get those from o-attributes
                     setattr(
@@ -220,7 +222,7 @@ class Ude(Structural):
     Note that `base` is required if at least 1 one of the :class:`Map`
     has a value set for its ``code`` attribute.
     """
-    maps: MutableSequence[Map]
+    maps: Iterable[Map]
     """
     An array of :class:`Map` objects represents all the custom mappings for the
     encoding.
@@ -232,7 +234,7 @@ class Ude(Structural):
         *,
         name: str | None = None,
         base: str | None = None,
-        maps: MutableSequence[Map] | None = None,
+        maps: Iterable[Map] | None = None,
     ) -> None:
         """Constructor"""
         vals = locals()
@@ -547,15 +549,15 @@ class Header(Structural):
     """
     The identifier of the user who modified the element last.
     """
-    notes: MutableSequence[Note]
+    notes: Iterable[Note]
     """
     An array of :class:`Note` objects
     """
-    props: MutableSequence[Prop]
+    props: Iterable[Prop]
     """
     An array of :class:`Prop` objects
     """
-    udes: MutableSequence[Ude]
+    udes: Iterable[Ude]
     """
     An array of :class:`Ude` objects
     """
@@ -594,9 +596,9 @@ class Header(Structural):
         creationid: str | None = None,
         changedate: str | datetime | None = None,
         changeid: str | None = None,
-        notes: MutableSequence[Note] | None = None,
-        props: MutableSequence[Prop] | None = None,
-        udes: MutableSequence[Ude] | None = None,
+        notes: Iterable[Note] | None = None,
+        props: Iterable[Prop] | None = None,
+        udes: Iterable[Ude] | None = None,
     ) -> None:
         """
         Constructor Method
@@ -605,7 +607,7 @@ class Header(Structural):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-        mask = set()
+        mask: set[str] = set()
         if self.udes is None:
             self.udes = []
             mask.add("ude")
@@ -711,7 +713,7 @@ class Tuv(Structural):
     :class:`Tu`
     """
 
-    segment: MutableSequence[str | Inline] | str
+    segment: Iterable[str | Inline] | str
     """
     The actual segment. Can be either a string, or an array of string and inline
     elements.
@@ -789,11 +791,11 @@ class Tuv(Structural):
     The format of the translation memory file from which the TMX
     document or segment thereof have been generated.
     """
-    notes: MutableSequence[Note]
+    notes: Iterable[Note]
     """
     An array of :class:`Note` objects
     """
-    props: MutableSequence[Prop]
+    props: Iterable[Prop]
     """
     An array of :class:`Prop` objects
     """
@@ -820,7 +822,7 @@ class Tuv(Structural):
         self,
         elem: XmlElementLike | None = None,
         *,
-        segment: MutableSequence[str | Inline] | str | None = None,
+        segment: Iterable[str | Inline] | str | None = None,
         lang: str | None = None,
         encoding: str | None = None,
         datatype: str | None = None,
@@ -833,8 +835,8 @@ class Tuv(Structural):
         changedate: str | datetime | None = None,
         changeid: str | None = None,
         tmf: str | None = None,
-        notes: MutableSequence[Note] | None = None,
-        props: MutableSequence[Prop] | None = None,
+        notes: Iterable[Note] | None = None,
+        props: Iterable[Prop] | None = None,
     ) -> None:
         """Constructor Method"""
         vals = locals()
@@ -996,7 +998,7 @@ class Tu(Structural):
         "notes",
         "props",
     )
-    tuvs: MutableSequence[Tuv]
+    tuvs: Iterable[Tuv]
     """
     An array of :class:`Note` objects
     """
@@ -1093,11 +1095,11 @@ class Tu(Structural):
     If a :class:`Tu` element does not have a srclang attribute specified,
     it uses the one defined in the :class:`Header` element.
     """
-    notes: MutableSequence[Note]
+    notes: Iterable[Note]
     """
     An array of :class:`Note` objects
     """
-    props: MutableSequence[Prop]
+    props: Iterable[Prop]
     """
     An array of :class:`Prop` objects
     """
@@ -1120,9 +1122,9 @@ class Tu(Structural):
         changeid: str | None = None,
         tmf: str | None = None,
         srclang: str | None = None,
-        notes: MutableSequence[Note] | None = None,
-        props: MutableSequence[Prop] | None = None,
-        tuvs: MutableSequence[Tuv] | None = None,
+        notes: Iterable[Note] | None = None,
+        props: Iterable[Prop] | None = None,
+        tuvs: Iterable[Tuv] | None = None,
     ) -> None:
         """Constructor Method"""
         vals = locals()
@@ -1226,7 +1228,7 @@ class Tmx(Structural):
     A :class:`Header` element. Contains information pertaining to the whole
     document.
     """
-    tus: MutableSequence[Tu]
+    tus: Iterable[Tu]
     """
     An array of :class:`Tu` elements. Contains all the :class:`Tu` of the
     document.
@@ -1237,7 +1239,7 @@ class Tmx(Structural):
         elem: XmlElementLike | None = None,
         *,
         header: Header | None = None,
-        tus: MutableSequence[Tu] | None = None,
+        tus: Iterable[Tu] | None = None,
     ) -> None:
         """Constructor method"""
         vals = locals()

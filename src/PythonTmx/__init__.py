@@ -29,7 +29,7 @@ class XmlElementLike(Protocol):
         self.text = None
         self.tail = None
 
-    def get(self, key: str, default: T | None = None) -> str | T:
+    def get(self, key: str, default: T | None = None) -> str | T | None:
         """
         Should any of the element's attribute using a key, and providing a
         default if the key doesn't exists.
@@ -40,14 +40,14 @@ class XmlElementLike(Protocol):
         """
         Should return the first child element with the given tag.
         """
-        return XmlElementLike()
+        return self
 
     def __iter__(self) -> Generator[Self, None, None]:
         """
         Should yield all direct children and all children should be of the same
         type.
         """
-        return iter([])
+        yield from []
 
     def __len__(self) -> int:
         """
@@ -56,4 +56,4 @@ class XmlElementLike(Protocol):
         return 0
 
 
-_Empty_Elem_ = XmlElementLike()
+_Empty_Elem_ = XmlElementLike()  # type: ignore
