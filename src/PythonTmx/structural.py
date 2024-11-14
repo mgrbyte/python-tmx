@@ -86,7 +86,7 @@ class Structural:
                     except (ValueError, TypeError):
                         setattr(self, attr, value)
                 elif attr in ("notes", "props", "tus", "tuvs", "udes", "maps"):
-                    setattr(self, attr, value if value is not None else [])
+                    setattr(self, attr, value)
                 elif attr == "segment":  # parse segment if needed using parse_inline
                     setattr(
                         self,
@@ -239,9 +239,11 @@ class Ude(Structural):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-        self._parse_children(
-            elem=elem if elem is not None else _Empty_Elem_, mask={"map"}
-        )
+        if self.maps is None:
+            self.maps = []
+            self._parse_children(
+                elem=elem if elem is not None else _Empty_Elem_, mask={"map"}
+            )
 
     def to_element(self):
         """
@@ -603,10 +605,21 @@ class Header(Structural):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-        self._parse_children(
-            elem=elem if elem is not None else _Empty_Elem_,
-            mask={"ude", "prop", "note"},
-        )
+        mask = set()
+        if self.udes is None:
+            self.udes = []
+            mask.add("ude")
+        if self.notes is None:
+            self.notes = []
+            mask.add("note")
+        if self.props is None:
+            self.props = []
+            mask.add("prop")
+        if len(mask) > 0:
+            self._parse_children(
+                elem=elem if elem is not None else _Empty_Elem_,
+                mask=mask,
+            )
 
     def to_element(self):
         """

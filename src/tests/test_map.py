@@ -24,6 +24,7 @@ class TestMap:
     def test_can_create_map_from_element(self):
         """
         Test that a Map can be created from an xml element
+        Test both lxml and stdlib
         """
         # Check lxml
         elem = lxmlET.fromstring(
@@ -51,20 +52,22 @@ class TestMap:
     def test_create_map_from_wrong_element_tag(self):
         """
         Test that a Map cannot be created from an element with a wrong tag
+        Test both lxml and stdlib
         """
-        elem = lxmlET.fromstring(
-            """<wrongmap unicode="test value for unicode"
-            code="test value for code" ent="test value for ent"
-            subst="test value for subst" />"""
-        )
+        # Check lxml
+        elem = lxmlET.fromstring("""<wrongmap />""")
         with pytest.raises(ValueError):
             Map(elem)
+
+        # Check ElementTree
+        elem = stdET.fromstring("""<wrongmap />""")
 
     def test_create_map_from_element_override_values(self):
         """
         Test that a Map can be created from an xml element with keyword
         arguments and that the keyword arguments override the values in the
         element
+        Test both lxml and stdlib
         """
         # Check lxml
         elem = lxmlET.fromstring(
@@ -99,6 +102,7 @@ class TestMap:
         """
         Test that a Map can be created from an xml element with an unknown
         attribute and that the unknown attribute is not in the Map's __dir__()
+        Test both lxml and stdlib
         """
         # Check lxml
         elem = lxmlET.fromstring(
@@ -165,6 +169,7 @@ class TestMap:
         """
         Test that a Map can be created from an xml element and is the same
         as the original
+        Test both lxml and stdlib
         """
         # Check lxml
         elem = lxmlET.fromstring(
