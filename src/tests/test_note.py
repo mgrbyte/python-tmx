@@ -47,17 +47,17 @@ class TestCreateNote:
         Test both lxml and stdlib
         """
         # Check lxml
-        note = Note(self.correct_lxml)
-        assert note.lang == "lxml test value for lang"
-        assert note.encoding == "lxml test value for encoding"
-        assert note.text == "lxml test value for text"
-        assert note._source_elem is self.correct_lxml
+        lxmlnote = Note(self.correct_lxml)
+        assert lxmlnote.lang == "lxml test value for lang"
+        assert lxmlnote.encoding == "lxml test value for encoding"
+        assert lxmlnote.text == "lxml test value for text"
+        assert lxmlnote._source_elem is self.correct_lxml
         # Check ElementTree
-        note = Note(self.correct_stdlib)
-        assert note.lang == "stdlib test value for lang"
-        assert note.encoding == "stdlib test value for encoding"
-        assert note.text == "stdlib test value for text"
-        assert note._source_elem is self.correct_stdlib
+        stdlib_note = Note(self.correct_stdlib)
+        assert stdlib_note.lang == "stdlib test value for lang"
+        assert stdlib_note.encoding == "stdlib test value for encoding"
+        assert stdlib_note.text == "stdlib test value for text"
+        assert stdlib_note._source_elem is self.correct_stdlib
 
     def test_create_note_from_wrong_element_tag(self):
         """
@@ -79,65 +79,65 @@ class TestCreateNote:
         Test both lxml and stdlib
         """
         # Check lxml
-        note = Note(
+        lxml_note = Note(
             self.correct_lxml,
             text="lxml override test value for text",
             lang="lxml override test value for lang",
             encoding="lxml override test value for encoding",
         )
-        assert note.text == "lxml override test value for text"
-        assert note.lang == "lxml override test value for lang"
-        assert note.encoding == "lxml override test value for encoding"
-        assert note._source_elem is self.correct_lxml
+        assert lxml_note.text == "lxml override test value for text"
+        assert lxml_note.lang == "lxml override test value for lang"
+        assert lxml_note.encoding == "lxml override test value for encoding"
+        assert lxml_note._source_elem is self.correct_lxml
         # Check ElementTree
-        note = Note(
+        stdlib_note = Note(
             self.correct_stdlib,
             text="stdlib override test value for text",
             lang="stdlib override test value for lang",
             encoding="stdlib override test value for encoding",
         )
-        assert note.text == "stdlib override test value for text"
-        assert note.lang == "stdlib override test value for lang"
-        assert note.encoding == "stdlib override test value for encoding"
-        assert note._source_elem is self.correct_stdlib
+        assert stdlib_note.text == "stdlib override test value for text"
+        assert stdlib_note.lang == "stdlib override test value for lang"
+        assert stdlib_note.encoding == "stdlib override test value for encoding"
+        assert stdlib_note._source_elem is self.correct_stdlib
 
     def test_create_note_from_element_with_unknown_attribute(self):
         """
-        Test that a Map can be created from an xml element with an unknown
-        attribute and that the unknown attribute is not in the Map's __dir__()
+        Test that a Note can be created from an xml element with an unknown
+        attribute and that the unknown attribute is not in the Note's __dir__()
         Test both lxml and stdlib
         """
         # Check lxml
-        note = Note(self.unknown_lxml)
-        assert note.lang == "lxml test value for lang"
-        assert note.encoding == "lxml test value for encoding"
-        assert note.text == "lxml test value for text"
-        assert note._source_elem is self.unknown_lxml
-        assert "unknown" not in note.__dir__()
+        lxml_note = Note(self.unknown_lxml)
+        assert lxml_note.lang == "lxml test value for lang"
+        assert lxml_note.encoding == "lxml test value for encoding"
+        assert lxml_note.text == "lxml test value for text"
+        assert lxml_note._source_elem is self.unknown_lxml
+        assert "unknown" not in lxml_note.__dir__()
 
         # Check ElementTree
-        note = Note(self.unknown_stdlib)
-        assert note.lang == "stdlib test value for lang"
-        assert note.encoding == "stdlib test value for encoding"
-        assert note.text == "stdlib test value for text"
-        assert note._source_elem is self.unknown_stdlib
-        assert "unknown" not in note.__dir__()
+        stdlib_note = Note(self.unknown_stdlib)
+        assert stdlib_note.lang == "stdlib test value for lang"
+        assert stdlib_note.encoding == "stdlib test value for encoding"
+        assert stdlib_note.text == "stdlib test value for text"
+        assert stdlib_note._source_elem is self.unknown_stdlib
+        assert "unknown" not in stdlib_note.__dir__()
 
     def test_create_note_with_non_string_attribute_value(self):
         """
         Test that a Note can be created with a non-string attribute value
         """
-        map = Note(lang=1, encoding=2, text=3)
-        assert map.lang == 1
-        assert map.encoding == 2
-        assert map.text == 3
+        note = Note(lang=1, encoding=2, text=3)
+        assert note.lang == 1
+        assert note.encoding == 2
+        assert note.text == 3
 
     # ==========================================================================
     #     Tests the export of a Note
     # ==========================================================================
     def test_export_empty_note(self):
         """
-        Test that an empty Map cannot be exported
+        Test that an empty Note cannot be exported
         """
         with pytest.raises(AttributeError):
             Note().to_element()

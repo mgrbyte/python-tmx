@@ -448,7 +448,7 @@ class Prop(Structural):
 
         # Required Attributes
         if self.text is None:
-            raise AttributeError("Attribute 'content' is required for Prop Elements")
+            raise AttributeError("Attribute 'text' is required for Prop Elements")
         elem.text = self.text
         if self.type is None:
             raise AttributeError("Attribute 'type' is required for Prop Elements")
