@@ -7,7 +7,7 @@ They are the building blocks of a tmx file.
 # having to worry about type errors when creating a tmx object from scratch.
 # Exorting to an Element though is much more strict and will raise an error if
 # the user tries to do something that is not allowed.
-from collections.abc import MutableSequence
+from collections.abc import Generator, MutableSequence
 from datetime import datetime
 from typing import Literal, assert_never, no_type_check
 
@@ -88,11 +88,21 @@ class Structural:
                         value if value is not None else elem.get(f"o-{attr}"),
                     )
                 elif attr == "usagecount":  # try to coerce int values
+                    if value is None:
+                        value = elem.get(attr)
                     try:
                         setattr(self, attr, int(value))
                     except (ValueError, TypeError):
                         setattr(self, attr, value)
-                elif attr in ("notes", "props", "tus", "tuvs", "udes", "maps"):
+                elif attr in (
+                    "notes",
+                    "props",
+                    "tus",
+                    "tuvs",
+                    "udes",
+                    "maps",
+                    "segment",
+                ):
                     setattr(self, attr, value)
                 elif attr == "segment":  # parse segment if needed using parse_inline
                     setattr(
@@ -105,16 +115,26 @@ class Structural:
             else:
                 assert_never(attr)
 
-    def __eq__(self, value) -> bool:
-        if not isinstance(value, type(self)):
-            return False
-        for attr in self.__slots__:
-            if getattr(self, attr) != getattr(value, attr):
-                return False
-        return True
-
     def to_element(self) -> _Element:
         raise NotImplementedError
+
+    def __getitem__(self, key: str) -> str | None:
+        if key in self.__slots__:
+            return getattr(self, key)
+        else:
+            raise KeyError(f"'{key}' is not an attribute of {self.__class__.__name__}")
+
+    def __setitem__(self, key: str, value: str | None) -> None:
+        if key in self.__slots__:
+            setattr(self, key, value)
+        else:
+            raise KeyError(f"'{key}' is not an attribute of {self.__class__.__name__}")
+
+    def __delitem__(self, key: str) -> None:
+        if key in self.__slots__:
+            setattr(self, key, None)
+        else:
+            raise KeyError(f"'{key}' is not an attribute of {self.__class__.__name__}")
 
     # mypy will always complain here since this method can't know it has the
     # correct correct attributes, but we know it does since we're calling it
@@ -304,6 +324,9 @@ class Ude(Structural):
             elem.extend(map.to_element() for map in self.maps)
             elem.set("base", self.base)
         return elem
+
+    def __iter__(self) -> Generator[Map, None, None]:
+        yield from self.maps
 
 
 class Note(Structural):
@@ -856,9 +879,26 @@ class Tuv(Structural):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-        self._parse_children(
-            elem=elem if elem is not None else _Empty_Elem_, mask={"prop", "note"}
-        )
+        mask: set[str] = set()
+        if self.segment is None:
+            if elem is not None and elem.find("seg") is not None:
+                self.segment = _parse_inline(elem.find("seg"))
+            else:
+                self.segment = None
+        if self.notes is None:
+            self.notes = []
+            mask.add("note")
+        if self.props is None:
+            self.props = []
+            mask.add("prop")
+        if len(mask) > 0:
+            self._parse_children(
+                elem=elem if elem is not None else _Empty_Elem_,
+                mask=mask,
+            )
+
+    def __iter__(self) -> Generator[str | Inline, None, None]:
+        yield from self.segment
 
     def to_element(self):
         """
@@ -894,8 +934,9 @@ class Tuv(Structural):
         elem.extend(prop.to_element() for prop in self.props)
 
         # Required Attributes
-        if self.lang is not None:
-            elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
+        if self.segment is None:
+            raise AttributeError("Attribute 'lang' is required for Tuv Elements")
+        elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
 
         # Segment logic
         if self.segment is None:
@@ -1144,10 +1185,21 @@ class Tu(Structural):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-        self._parse_children(
-            elem=elem if elem is not None else _Empty_Elem_,
-            mask={"tuv", "prop", "note"},
-        )
+        mask: set[str] = set()
+        if self.tuvs is None:
+            self.tuvs = []
+            mask.add("tuv")
+        if self.notes is None:
+            self.notes = []
+            mask.add("note")
+        if self.props is None:
+            self.props = []
+            mask.add("prop")
+        if len(mask) > 0:
+            self._parse_children(
+                elem=elem if elem is not None else _Empty_Elem_,
+                mask=mask,
+            )
 
     def to_element(self):
         """
@@ -1259,9 +1311,15 @@ class Tmx(Structural):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-        self._parse_children(
-            elem=elem if elem is not None else _Empty_Elem_, mask={"tu"}
-        )
+        mask: set[str] = set()
+        if self.tus is None:
+            self.tus = []
+            mask.add("tu")
+        if len(mask) > 0:
+            self._parse_children(
+                elem=elem if elem is not None else _Empty_Elem_,
+                mask=mask,
+            )
 
     def to_element(self) -> _Element:
         """
