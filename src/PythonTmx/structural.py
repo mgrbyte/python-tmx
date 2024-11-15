@@ -116,9 +116,9 @@ class Structural:
     def to_element(self) -> _Element:
         raise NotImplementedError
 
-    # mypy will always complain here since it can't know that the subclasses
-    # will have the props or notes attribute when this is called so we disable
-    # type checking for this method
+    # mypy will always complain here since this method can't know it has the
+    # correct correct attributes, but we know it does since we're calling it
+    # correctly ourselves so we force mypy to ignore this
     @no_type_check
     def _parse_children(self, elem: XmlElementLike, mask: set[str]) -> None:
         for child in elem:

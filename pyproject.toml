@@ -18,8 +18,7 @@ dependencies = ["lxml", "typing_extensions"]
 
 [project.optional-dependencies]
 docs = ["sphinx","pydata-sphinx-theme"]
-dev = ["mypy", "pytest", "types-lxml"]
-test = ["pytest"]
+dev = ["mypy", "types-lxml"]
 
 [project.urls]
 Homepage = "https://github.com/ChonkyYoshi/python-tmx"

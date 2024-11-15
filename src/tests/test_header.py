@@ -1,3 +1,7 @@
+"""
+Tests for the Header class
+"""
+
 import xml.etree.ElementTree as stdET
 from collections import Counter, deque
 from datetime import datetime
