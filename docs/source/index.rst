@@ -29,138 +29,159 @@ Install from pip
 Description
 -----------
 
-The main philosophy behind PythonTmx is to let `you` do whatever you want easier
-rather than be a one stop shop for tmx file utility functions. While I might add
-some useful ones to the ``utils`` module later down the line. The main priority
-is to add an abstraction layer when dealing with TMX files that deals with type
-checking, attributes and ensuring tmx files are valid for you, letting you do
-what you want without having to deal with the raw xml output of lxml.
+The main philosophy behind PythonTmx is to be an abstraction layer above above
+lxml/ElementTree (or any other as long as they follow a simple Protocol) when
+dealing with TMX files specifically.
 
-Using PythonTmx is as simple as parsing a tmx file using lxml or ElementTree
-and feeding the resulting element to the ``Tmx`` constructor. Note that `every`
-class also support being created from a xml Element. So if you simply want to
-interact with the header and not touch the tus, you can also parse only
-that element from the file, feed it to the ``Header`` constructor, do what you
-need to do, export that ``Header`` back to an element, replace the one in the
-file with yours, and be done with it.
+PythonTmx is `NOT` meant for beginners with tmx files. Though since it abstracts
+away the xml parsing it doesn't necessarily require strong knowledge of xml file
+handling. If you are new to tmx files and want to learn how to work with tmx
+files, I recommend you to start with the
+`official documentation <https://www.gala-global.org/tmx-14b>`_ to get to know
+more about the format from the official source. A lot of the information in the
+documentation is directly applicable to PythonTmx.
 
-While the library is created with lxml in mind, it is also fully compatible
-with the stdlib ElementTree library with `no codes change required`.
-If for some reason you want to use another xml library to read tmx files,
-simply make sure that the object you pass to the constructor adheres to
-the ``XmlElementLike`` Protocol before feeding your element to PythonTmx.
+Every single element in the Tmx standard is represented by a class in PythonTmx.
+The classes are named after the element they represent and use PascalCase.
+For example, the ``<tuv>`` element is represented by the ``Tuv`` class.
 
-It also possible to provide values for any other attributes along with ``elem``.
-When a constructor receives both ``elem`` and a keyword argument. That attribute
-will not be parsed and the provided value will be used instead.
+From there every attribute of every element is accessible through dot notation.
+For example, to get the ``lang`` attribute from a ``Note`` object called
+``my_note`` simply do ``my_note.lang``.
 
-From there, you can manipulate it however you want, grabbing any attribute from
-an object using dot notation, e.g. to get ``lang`` attribute from a
-``Note`` object called ``my_note`` simply do ``my_note.lang``.
+Usage
+-----
+
+Creating PythonTmx objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every object in PythonTmx can be created from an lxml Element or ElementTree
+Element. Simply call the constructor with the element you want to use as the
+first argument. If you want to override any attribute, simply pass it as a
+keyword argument. During creation, the constructor will proritize the attributes
+passed as keyword arguments over the attributes in the element.
+
+.. note::
+    You cannot create an PythonTmx object from an element and set any attribute
+    to a value of None. If you want an attribute to be None but still use an
+    xml element, you need to set the value to None `after` creating the object.
+
+.. warning::
+    If you pass an lxml Element to the constructor, a ValueError will be raised
+    if the element's tag does not match the class name of the object you're
+    trying to create. Meaning you can't create a ``Header`` object from an
+    ``<tu>`` element.
+
+Due to the fact that Tmx files can sometimes be very large, all PythonTmx objects
+use `slots` to reduce memory usage. This means if you try to set or access an 
+attribute that is not in the object's `slots` it will raise an
+``AttributeError``.
+
+.. note::
+    When creating a PythonTmx object from an lxml Element, the constructor will
+    ignore any attributes that are not in the object's `slots`.
+
+Since PythonTmx is meant to make dealing with tmx files easier, it will also
+try to coerce values to their relevant types where applicable. For example,
+as long as the for the ``creationdate`` attribute follows the YYYYMMDDTHHMMSS
+format, it will be converted to a ``datetime`` object when creating the object.
+Same goes for the ``usagecount`` attribute, which will be converted to an
+``int`` if possible.
+
+.. note::
+    If type coercion is not possible, the value parsed/provided will still be
+    assigned to the attribute.
+
+By default, any attribute meant to house an array of objects will be a list if
+no children are present on the element and no value is provided as a keyword
+argument.
+
+For convenience, the ``utils`` module contains a function ``from_file`` that
+will parse a tmx file and create a ``Tmx`` object from it.
+
+Manipulating PythonTmx objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every attribute of every element is accessible through dot notation.
+For those who prefer accessing and setting attributes values using the bracket
+notation, you can also do that. For example, to get the ``lang`` attribute from
+a ``Note`` object called ``my_note`` you can use either ``my_note["lang"]`` or
+``my_note.lang``.
+
+.. note::
+    You cannot delete attributes from a PythonTmx object. calling ``del``
+    on an attribute will simply set it back to None.
+
+Some Elements also implement the ``__iter__`` method, letting you iterate over
+the children of the element a lot more easily. For example, to iterate over all
+the ``Tu`` objects in a ``Tmx`` object called ``my_tmx`` you can do
+``for tu in my_tmx.tus``.
+
+.. note::
+    For elements that can have multiple types of children, one type of children
+    can be accessd this way. Please refer to the documentation of the element
+    you're trying to iterate over for more information.
+
+Exporting PythonTmx objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When it comes time to export a PythonTmx object, you can use the ``to_element``
+method to get an lxml ElementTree object that can be written to a file or
+string.
+
+Note however that this is when PythonTmx will be the most restrictive in what
+it lets you do. No object can be exported if it is missing `any` required
+attribute. Furthermore, except for values that meant to not be strings (such as
+``creationdate`` or ``notes``), any attribute that is not a string will raise
+a TypeError.
+
+.. note::
+    The only attributes for which the actual value is checked are ``segtype``,
+    ``pos`` and ``assoc`` as they are the only attributes that are restricted in
+    what values they can have.
+
+For convenience, the ``utils`` module contains a function ``to_file`` that will
+write a ``Tmx`` object to a tmx file directly.
 
 Examples
 --------
 
-Making a tmx file bilngual
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Gathering information from a tmx file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: python
 
-   from datetime import UTC, datetime
+    from PythonTmx.utils import from_file
 
-   from lxml.etree import ElementTree, parse
+    tmx_file = from_file("a.tmx")
 
-   from PythonTmx.structural import Tmx
+    tu_count = len(tmx_file.tus)
+    tuv_count = dict()
+    tu_with_notes, tu_with_props = 0, 0
+    tuv_with_notes, tuv_with_props = 0, 0
+    old_tus = 0
+    for tu in tmx_file:
+        tu_with_notes += len(tu.notes)
+        tu_with_props += len(tu.props)
+        for tuv in tu:
+            if tuv.lang not in tuv_count:
+                tuv_count[tuv.lang] = 0
+            else:
+                tuv_count[tuv.lang] += 1
+            tuv_with_notes += len(tuv.notes)
+            tuv_with_props += len(tuv.props)
 
-   # tmx files are valid xml so use lxml to parse them
-   root = parse("Translation Memory.tmx").getroot()
+    print(f"""
+    Total TUs: {tu_count}
+    Total TUVs per language:
+    {tuv_count}
 
-   # convert to a Tmx Object by simply feeding the element to the constructor
-   tmx_obj = Tmx(elem=root)
+    Total TUs with notes: {tu_with_notes}
+    Total TUs with props: {tu_with_props}
 
-   # iterate over all tu and their tuv
-   for tu in tmx_obj.tus:
-       for tuv in tu.tuvs:
-           # remove any tuv that's not english or german
-           if tuv.lang not in ("en", "de"):
-               tu.pop(tuv)
-   # update the changedate in the header
-   tmx_obj.header.changedate = datetime.now(UTC)
-
-   # export the tmx back to an lxml ELement and use lxml to export it to a file again
-   new_root = tmx_obj.to_element()
-   ElementTree(new_root).write("Bilingual.tmx")
-
-Converting a csv to a Tmx file from scratch
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-   import csv
-   import PythonTmx.structural as tm
-   from lxml.etree import parse, ElementTree
-   from datetime import datetime, UTC
-
-
-   # create a header with all the relevant info
-   my_header = tm.Header(
-       creationtool="PythonTmx",
-       creationtoolversion="0.3",
-       datatype="PlainText",
-       segtype="sentence",
-       adminlang="en-us",
-       srclang="EN",
-       tmf="csv",
-       creationdate=datetime.now(UTC),
-       creationid="Enzo Agosta",
-       changeid="Enzo Agosta",
-   )
-   # create an empty Tmx object with our header
-   tmx = tm.Tmx(header=my_header)
-
-   with open("translations.csv", encoding="utf-8") as file:
-       #read the csv and start iterating
-       lines = csv.reader(file)
-       for line in lines:
-           # create a Tuv/language
-           english = tm.Tuv(
-               segment=line[0],
-               lang="en",
-               creationtool=my_header.creationtool,
-               creationtoolversion=my_header.creationtool,
-               creationdate=datetime.now(UTC),
-               tmf=my_header.tmf,
-           )
-           german = tm.Tuv(
-               segment=line[1],
-               lang="de",
-               creationtool=my_header.creationtool,
-               creationtoolversion=my_header.creationtool,
-               creationdate=datetime.now(UTC),
-               tmf=my_header.tmf,
-           )
-           spanish = tm.Tuv(
-               segment=line[2],
-               lang="es",
-               creationtool=my_header.creationtool,
-               creationtoolversion=my_header.creationtool,
-               creationdate=datetime.now(UTC),
-               tmf=my_header.tmf,
-           )
-           # Append the Tuv to main Tmx object
-           tmx.tus.append(
-               tm.Tu(
-                   tuvs=[english, german, spanish],
-                   creationtool=my_header.creationtool,
-                   creationtoolversion=my_header.creationtool,
-                   creationdate=datetime.now(UTC),
-                   tmf=my_header.tmf,
-                   srclang="en",
-               )
-           )
-   # export the tmx back to an lxml ELement and use lxml to export it to a file again
-   new_root = tmx_obj.to_element()
-   ElementTree(new_root).write("From csv.tmx")
+    Total TUVs with notes: {tuv_with_notes}
+    Total TUVs with props: {tuv_with_props}
+    """)
 
 License
 -------

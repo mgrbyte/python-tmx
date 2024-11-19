@@ -1201,6 +1201,9 @@ class Tu(Structural):
                 mask=mask,
             )
 
+    def __iter__(self) -> Generator[Tuv, None, None]:
+        yield from self.tuvs
+
     def to_element(self):
         """
         Converts the object into an lxml `_Element`, validating that all
@@ -1317,9 +1320,12 @@ class Tmx(Structural):
             mask.add("tu")
         if len(mask) > 0:
             self._parse_children(
-                elem=elem if elem is not None else _Empty_Elem_,
+                elem=elem.find("body") if elem is not None else _Empty_Elem_,
                 mask=mask,
             )
+
+    def __iter__(self) -> Generator[Tu, None, None]:
+        yield from self.tus
 
     def to_element(self) -> _Element:
         """
