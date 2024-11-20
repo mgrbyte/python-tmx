@@ -3,10 +3,6 @@ This module contains all the inline elements of a tmx file.
 They are the element that actually contain the text of the translation.
 """
 
-# General Comment: We're intentionally letting users use the library without
-# having to worry about type errors when creating a tmx object from scratch.
-# Exorting to an Element though is much more strict and will raise an error if
-# the user tries to do something that is not allowed.
 from __future__ import annotations
 
 from collections.abc import MutableSequence
@@ -16,35 +12,24 @@ from lxml.etree import Element, _Element
 from typing_extensions import deprecated
 
 from PythonTmx import XmlElementLike
+from PythonTmx.utils import _export_int, _parse_int_attr
 
-_Empty_Elem_ = Element("empty")
+EmptyElement = Element("empty")
 
 
 def _parse_inline(
-    elem: XmlElementLike,
+    elem: XmlElementLike | None,
 ) -> MutableSequence[str | Inline] | str:
-    """
-    Internal function that parses a inline element and outputs a list of
-    strings and Inline Elements in document order.
-
-    Parameters
-    ----------
-    elem : _Element
-        The Element to parse.
-
-    Returns
-    -------
-    MutableSequence[str | Inline] | str
-         list of str and Inline Elements
-    """
     result: MutableSequence[str | Inline] = []
+    if elem is None:
+        return result
     if elem.text is not None:
         if not len(elem):
             return elem.text
         result.append(elem.text)
     else:
         if not len(elem):
-            return ""
+            return result
     for child in elem:
         match child.tag:
             case "bpt":
@@ -68,6 +53,40 @@ def _parse_inline(
     return result
 
 
+def _export_inline(
+    elem: _Element,
+    content: MutableSequence[str | Inline] | str,
+    force_str: bool,
+) -> None:
+    if elem.tag in ("bpt", "ept", "it", "ph", "ut"):
+        allowed_tags = {"sub"}
+    else:
+        allowed_tags = {"bpt", "ept", "it", "ph", "hi", "ut"}
+    for item in content:
+        if isinstance(item, Inline):
+            if item.__class__.__name__.lower() not in allowed_tags:
+                raise ValueError(
+                    f"Invalid inline element {item.__class__.__name__}"
+                    " not allowed in this context"
+                )
+            elem.append(item.to_element(force_str))
+        elif isinstance(item, str):
+            if not len(elem):
+                if not elem.text:
+                    elem.text = item
+                else:
+                    elem.text += item
+            else:
+                if not elem[-1].tail:
+                    elem[-1].tail = item
+                else:
+                    elem[-1].tail += item
+        else:
+            raise TypeError(
+                f"Invalid SubElement, expected str or Inline, got {type(item)}"
+            )
+
+
 class Inline:
     """
     Base class for Inline elements. Doesn't contain any logic and is only
@@ -78,45 +97,73 @@ class Inline:
 
     _source_elem: XmlElementLike | None
 
-    def __init__(self, **kwargs):
-        if kwargs.get("elem") is not None:
-            elem = kwargs.get("elem")
-        else:
-            elem = _Empty_Elem_
-        if elem is not _Empty_Elem_:
-            if elem.tag != self.__class__.__name__.lower():
+    def __init__(
+        self, elem: XmlElementLike | None = None, strict: bool = True, **kwargs
+    ):
+        # Check element's tag, Error if it doesn't match the object's tag and
+        # strict mode is enabled else try to create the object still
+        if elem is not None:
+            if str(elem.tag) != self.__class__.__name__.lower() and strict:
                 raise ValueError(
                     "provided element tag does not match the object you're "
                     "trying to create, expected "
-                    f"<{self.__class__.__name__.lower()}> but got {elem.tag}"
+                    f"<{self.__class__.__name__.lower()}> but got {str(elem.tag)}"
                 )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
+            self._source_elem = elem
+        else:
+            self._source_elem = None
+            elem = EmptyElement
 
-        for attr, value in locals()["kwargs"].items():
-            if attr == "elem":
-                continue
-            if attr in self.__slots__:
-                if attr in ("i", "x"):  # try to coerce int values
-                    try:
-                        setattr(self, attr, int(value))
-                    except (ValueError, TypeError):
-                        setattr(self, attr, value)
-                elif attr == "content":  # parse content if needed using parse_inline
-                    setattr(
-                        self,
-                        attr,
-                        value if value is not None else _parse_inline(elem),
+        # Set attributes from kwargs or from the element's attributes if not
+        # present in kwargs
+        for attr, value in kwargs.items():
+            match attr:
+                case x if x not in self.__slots__:
+                    raise AttributeError(
+                        f"Attribute {attr} not allowed on "
+                        f"{self.__class__.__name__} objects"
                     )
-                else:
-                    setattr(self, attr, value)
-            else:  # We're permissive but only with value types, not attributes
-                raise AttributeError(
-                    f"Unexpected attribute '{attr}' for "
-                    f"{self.__class__.__name__} Elements"
-                )
+                case "i" | "x":  # handle int separately
+                    setattr(self, attr, _parse_int_attr(elem, attr, value))
+                case "content":  # parse content using parse_inline
+                    (
+                        setattr(
+                            self,
+                            attr,
+                            value if value is not None else _parse_inline(elem),
+                        )
+                    )
+                case _:
+                    setattr(self, attr, value if value is not None else elem.get(attr))
 
-    def to_element(self) -> _Element:
-        raise NotImplementedError
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element(self.__class__.__name__.lower())
+        for attr in self.__slots__:
+            val = getattr(self, attr)
+            if val is None:
+                continue
+            match attr:
+                case "x" | "i":  # handle int separately
+                    try:
+                        val = _export_int(attr, val)
+                    except ValueError as e:
+                        if not force_str:
+                            raise e
+                    elem.set(attr, val)
+                case "content":
+                    if isinstance(val, str):
+                        elem.text = val
+                    else:
+                        _export_inline(elem, val, force_str)
+                case _:
+                    if not isinstance(val, str):
+                        if not force_str:
+                            raise TypeError(
+                                f"Invalid value for '{attr}'. {val} is not a string"
+                            )
+                        val = str(val)
+                    elem.set(attr, val)
+        return elem
 
 
 class Bpt(Inline):
@@ -168,73 +215,11 @@ class Bpt(Inline):
         vals.pop("__class__")
         super().__init__(**vals)
 
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file
-            or manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        ValueError
-            Raised if :attr:`content` contains a disallowed element
-        """
-        elem = Element("bpt")
-        elem.text, elem.tail = "", ""
-
+    def to_element(self, force_str: bool = False) -> _Element:
         # Required Attributes
         if self.i is None:
             raise AttributeError("Attribute 'i' is required for Bpt Elements")
-        elif isinstance(self.i, int):
-            elem.set("i", str(self.i))
-        else:
-            elem.set("i", self.i)
-
-        # Optional Attributes
-        if self.x is not None:
-            if isinstance(self.x, int):
-                elem.set("x", str(self.x))
-            else:
-                elem.set("x", self.x)
-        if self.type is not None:
-            elem.set("type", self.type)
-
-        # Content
-        if isinstance(self.content, str):
-            elem.text = self.content
-        else:
-            for item in self.content:
-                if isinstance(item, str):
-                    # If elem has already has another inline, add or append
-                    # the text as the tail of that element
-                    if len(elem):
-                        elem[-1].tail = (
-                            elem[-1].tail + item if elem[-1].tail is not None else item
-                        )
-                    # If elem has no inline, add the text as the text of the element
-                    else:
-                        elem.text = elem.text + item if elem.text is not None else item
-                else:
-                    # else check if element is allowed and append it
-                    if isinstance(item, Sub):
-                        elem.append(item.to_element())
-                    else:
-                        raise ValueError(
-                            f"'{type(item)}' Elements are not allowed inside a "
-                            "Bpt Element"
-                        )
-        return elem
+        return super().to_element(force_str)
 
 
 class Ept(Inline):
@@ -272,64 +257,11 @@ class Ept(Inline):
         vals.pop("__class__")
         super().__init__(**vals)
 
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file
-            or manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        ValueError
-            Raised if :attr:`content` contains a disallowed element
-        """
-        elem = Element("ept")
-        elem.text, elem.tail = "", ""
-
+    def to_element(self, force_str: bool = False) -> _Element:
         # Required Attributes
         if self.i is None:
             raise AttributeError("Attribute 'i' is required for Ept Elements")
-        elif isinstance(self.i, int):
-            elem.set("i", str(self.i))
-        else:
-            elem.set("i", self.i)
-
-        # Content
-        if isinstance(self.content, str):
-            elem.text = self.content
-        else:
-            for item in self.content:
-                if isinstance(item, str):
-                    # If elem has already has another inline, add or append
-                    # the text as the tail of that element
-                    if len(elem):
-                        elem[-1].tail = (
-                            elem[-1].tail + item if elem[-1].tail is not None else item
-                        )
-                    # If elem has no inline, add the text as the text of the element
-                    else:
-                        elem.text = elem.text + item if elem.text is not None else item
-                else:
-                    # else check if element is allowed and append it
-                    if isinstance(item, Sub):
-                        elem.append(item.to_element())
-                    else:
-                        raise ValueError(
-                            f"'{type(item)}' Elements are not allowed inside a "
-                            "Ept Element"
-                        )
-        return elem
+        return super().to_element(force_str)
 
 
 class Hi(Inline):
@@ -376,66 +308,6 @@ class Hi(Inline):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file
-            or manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        ValueError
-            Raised if :attr:`content` contains a disallowed element
-        """
-        elem = Element("hi")
-        elem.text, elem.tail = "", ""
-
-        # Optional Attributes
-        if self.x is not None:
-            if isinstance(self.x, int):
-                elem.set("x", str(self.x))
-            else:
-                elem.set("x", self.x)
-        if self.type is not None:
-            elem.set("type", self.type)
-
-        # Content
-        if isinstance(self.content, str):
-            elem.text = self.content
-        else:
-            for item in self.content:
-                if isinstance(item, str):
-                    # If elem has already has another inline, add or append
-                    # the text as the tail of that element
-                    if len(elem):
-                        elem[-1].tail = (
-                            elem[-1].tail + item if elem[-1].tail is not None else item
-                        )
-                    # If elem has no inline, add the text as the text of the element
-                    else:
-                        elem.text = elem.text + item if elem.text is not None else item
-                else:
-                    # else check if element is allowed and append it
-                    if isinstance(item, (Bpt, Ept, It, Ph, Hi)):
-                        elem.append(item.to_element())
-                    else:
-                        raise ValueError(
-                            f"'{type(item)}' Elements are not allowed inside a "
-                            "Hi Element"
-                        )
-        return elem
 
 
 class It(Inline):
@@ -485,74 +357,11 @@ class It(Inline):
         vals.pop("__class__")
         super().__init__(**vals)
 
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file
-            or manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        ValueError
-            Raised if :attr:`content` contains a disallowed element
-        """
-        elem = Element("it")
-        elem.text, elem.tail = "", ""
-
+    def to_element(self, force_str: bool = False) -> _Element:
         # Required Attributes
         if self.pos is None:
             raise AttributeError("Attribute 'pos' is required for It Elements")
-        elif self.pos not in ("begin", "end"):
-            raise ValueError(
-                'Attribute "pos" must be one of "begin", "end"' f"but got {self.pos}"
-            )
-        elem.set("pos", self.pos)
-
-        # Optional Attributes
-        if self.x is not None:
-            if isinstance(self.x, int):
-                elem.set("x", str(self.x))
-            else:
-                elem.set("x", self.x)
-        if self.type is not None:
-            elem.set("type", self.type)
-
-        # Content
-        if isinstance(self.content, str):
-            elem.text = self.content
-        else:
-            for item in self.content:
-                if isinstance(item, str):
-                    # If elem has already has another inline, add or append
-                    # the text as the tail of that element
-                    if len(elem):
-                        elem[-1].tail = (
-                            elem[-1].tail + item if elem[-1].tail is not None else item
-                        )
-                    # If elem has no inline, add the text as the text of the element
-                    else:
-                        elem.text = elem.text + item if elem.text is not None else item
-                else:
-                    # else check if element is allowed and append it
-                    if isinstance(item, Sub):
-                        elem.append(item.to_element())
-                    else:
-                        raise ValueError(
-                            f"'{type(item)}' Elements are not allowed inside a "
-                            "Ept Element"
-                        )
-        return elem
+        return super().to_element(force_str)
 
 
 class Ph(Inline):
@@ -605,72 +414,6 @@ class Ph(Inline):
         vals.pop("__class__")
         super().__init__(**vals)
 
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file
-            or manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        ValueError
-            Raised if :attr:`content` contains a disallowed element
-        """
-        elem = Element("ph")
-        elem.text, elem.tail = "", ""
-
-        # Optional Attributes
-        if self.x is not None:
-            if isinstance(self.x, int):
-                elem.set("x", str(self.x))
-            else:
-                elem.set("x", self.x)
-        if self.assoc is not None:
-            if self.assoc not in ("p", "f", "b"):
-                raise ValueError(
-                    'Attribute "pos" must be one of "p", "f", "b"'
-                    f"but got {self.assoc}"
-                )
-            elem.set("assoc", self.assoc)
-
-        # Content
-        # Content
-        if isinstance(self.content, str):
-            elem.text = self.content
-        else:
-            for item in self.content:
-                if isinstance(item, str):
-                    # If elem has already has another inline, add or append
-                    # the text as the tail of that element
-                    if len(elem):
-                        elem[-1].tail = (
-                            elem[-1].tail + item if elem[-1].tail is not None else item
-                        )
-                    # If elem has no inline, add the text as the text of the element
-                    else:
-                        elem.text = elem.text + item if elem.text is not None else item
-                else:
-                    # else check if element is allowed and append it
-                    if isinstance(item, Sub):
-                        elem.append(item.to_element())
-                    else:
-                        raise ValueError(
-                            f"'{type(item)}' Elements are not allowed inside a "
-                            "Ept Element"
-                        )
-        return elem
-
 
 class Sub(Inline):
     """
@@ -708,63 +451,6 @@ class Sub(Inline):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file
-            or manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        ValueError
-            Raised if :attr:`content` contains a disallowed element
-        """
-        elem = Element("sub")
-        elem.text, elem.tail = "", ""
-
-        # Optional Attributes
-        if self.type is not None:
-            elem.set("type", self.type)
-        if self.datatype is not None:
-            elem.set("datatype", self.datatype)
-
-        # Content
-        if isinstance(self.content, str):
-            elem.text = self.content
-        else:
-            for item in self.content:
-                if isinstance(item, str):
-                    # If elem has already has another inline, add or append
-                    # the text as the tail of that element
-                    if len(elem):
-                        elem[-1].tail = (
-                            elem[-1].tail + item if elem[-1].tail is not None else item
-                        )
-                    # If elem has no inline, add the text as the text of the element
-                    else:
-                        elem.text = elem.text + item if elem.text is not None else item
-                else:
-                    # else check if element is allowed and append it
-                    if isinstance(item, (Bpt, Ept, It, Hi, Ph)):
-                        elem.append(item.to_element())
-                    else:
-                        raise ValueError(
-                            f"'{type(item)}' Elements are not allowed inside a "
-                            "Ept Element"
-                        )
-        return elem
 
 
 @deprecated(
@@ -811,61 +497,3 @@ class Ut(Inline):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file
-            or manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        ValueError
-            Raised if :attr:`content` contains a disallowed element
-        """
-        elem = Element("sub")
-        elem.text, elem.tail = "", ""
-
-        # Optional Attributes
-        if self.x is not None:
-            if isinstance(self.x, int):
-                elem.set("x", str(self.x))
-            else:
-                elem.set("x", self.x)
-
-        # Content
-        if isinstance(self.content, str):
-            elem.text = self.content
-        else:
-            for item in self.content:
-                if isinstance(item, str):
-                    # If elem has already has another inline, add or append
-                    # the text as the tail of that element
-                    if len(elem):
-                        elem[-1].tail = (
-                            elem[-1].tail + item if elem[-1].tail is not None else item
-                        )
-                    # If elem has no inline, add the text as the text of the element
-                    else:
-                        elem.text = elem.text + item if elem.text is not None else item
-                else:
-                    # else check if element is allowed and append it
-                    if isinstance(item, Sub):
-                        elem.append(item.to_element())
-                    else:
-                        raise ValueError(
-                            f"'{type(item)}' Elements are not allowed inside a "
-                            "Ept Element"
-                        )
-        return elem

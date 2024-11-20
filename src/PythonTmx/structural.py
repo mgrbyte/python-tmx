@@ -3,18 +3,49 @@ This module contains all the structural elements of a tmx file.
 They are the building blocks of a tmx file.
 """
 
-# General Comment: We're intentionally letting users use the library without
-# having to worry about type errors when creating a tmx object from scratch.
-# Exorting to an Element though is much more strict and will raise an error if
-# the user tries to do something that is not allowed.
 from collections.abc import Generator, MutableSequence
 from datetime import datetime
-from typing import Literal, assert_never, no_type_check
+from typing import Literal, no_type_check
 
 from lxml.etree import Element, SubElement, _Element
 
-from PythonTmx import XmlElementLike, _Empty_Elem_
-from PythonTmx.inline import Inline, _parse_inline
+from PythonTmx import XmlElementLike
+from PythonTmx.inline import Bpt, Ept, Inline, _parse_inline
+from PythonTmx.utils import (
+    _export_dt,
+    _export_int,
+    _parse_dt_attr,
+    _parse_int_attr,
+)
+
+EmptyElement = Element("empty")
+
+
+def _check_seg(seg: MutableSequence[str | Inline] | str) -> None:
+    if isinstance(seg, str):
+        return
+    bpt_i_list: list[int] = []
+    ept_i_list: list[int] = []
+    for item in seg:
+        if isinstance(item, Bpt):
+            if item.i in bpt_i_list:
+                raise ValueError(f"Duplicate Bpt with i={item.i}")
+            bpt_i_list.append(item.i)
+        elif isinstance(item, Ept):
+            if item.i in ept_i_list:
+                raise ValueError(f"Duplicate Ept with i={item.i}")
+            ept_i_list.append(item.i)
+        elif isinstance(item, str):
+            pass
+        else:
+            raise ValueError(f"Invalid item in segment: {item}")
+    if len(bpt_i_list) > len(set(bpt_i_list)):
+        raise ValueError("Too many Bpt")
+    if len(ept_i_list) < len(set(ept_i_list)):
+        raise ValueError("Too many Ept")
+    for i in bpt_i_list:
+        if i not in ept_i_list:
+            raise ValueError(f"Bpt with i={i} is not followed by an Ept")
 
 
 class Structural:
@@ -26,54 +57,49 @@ class Structural:
 
     _source_elem: XmlElementLike | None
 
-    def __init__(self, **kwargs):
-        if kwargs.get("elem") is not None:
-            elem = kwargs.get("elem")
-        else:
-            elem = _Empty_Elem_
-        if elem is not _Empty_Elem_:
-            if elem.tag != self.__class__.__name__.lower():
+    def __init__(
+        self, elem: XmlElementLike | None = None, strict: bool = True, **kwargs
+    ):
+        # Check element's tag, Error if it doesn't match the object's tag and
+        # strict mode is enabled else try to create the object still
+        if elem is not None:
+            if str(elem.tag) != self.__class__.__name__.lower() and strict:
                 raise ValueError(
                     "provided element tag does not match the object you're "
                     "trying to create, expected "
-                    f"<{self.__class__.__name__.lower()}> but got {elem.tag}"
+                    f"<{self.__class__.__name__.lower()}> but got {str(elem.tag)}"
                 )
-        self._source_elem = elem if elem is not _Empty_Elem_ else None
+            self._source_elem = elem
+        else:
+            self._source_elem = None
+            elem = EmptyElement
 
+        # Set attributes from kwargs or from the element's attributes if not
+        # present in kwargs
         for attr, value in kwargs.items():
-            if attr in ("elem"):
-                continue
-            if attr in self.__slots__:
-                if attr == "text":  # get text from text attribute not attrib dict
-                    setattr(self, attr, value if value is not None else elem.text)
-                elif attr == "header":  # create an empty header if no value
-                    setattr(
-                        self,
-                        attr,
-                        value if value is not None else Header(),
+            match attr:
+                case x if x not in self.__slots__:
+                    raise AttributeError(
+                        f"Attribute {attr} not allowed on "
+                        f"{self.__class__.__name__} objects"
                     )
-                elif attr in (
-                    "creationdate",
-                    "changedate",
-                    "lastusagedate",
-                ):  # try to coerce datetime values
+                case "text":  # get text from element's text not through .get
+                    setattr(self, attr, value if value is not None else elem.text)
+                case "header":  # create an empty header if no value
                     if value is None:
-                        if elem.get(attr) is not None:
-                            value = elem.get(attr)
-                    if isinstance(value, str):
-                        try:
-                            setattr(
-                                self,
-                                attr,
-                                datetime.strptime(value, "%Y%m%dT%H%M%SZ"),
-                            )
-                        except ValueError:
-                            setattr(self, attr, value)
-                    elif isinstance(value, datetime):
-                        setattr(self, attr, value)
+                        if elem is not None:
+                            setattr(self, attr, Header(elem=elem.find("header")))
+                        else:
+                            setattr(self, attr, Header())
                     else:
                         setattr(self, attr, value)
-                elif attr == "lang":  # get lang from xml:lang attribute
+                case (
+                    "creationdate"
+                    | "changedate"
+                    | "lastusagedate"
+                ):  # Handle potential datetime separately
+                    setattr(self, attr, _parse_dt_attr(elem, attr, value))
+                case "lang":  # get lang from xml:lang attribute
                     setattr(
                         self,
                         attr,
@@ -81,42 +107,76 @@ class Structural:
                         if value is not None
                         else elem.get("{http://www.w3.org/XML/1998/namespace}lang"),
                     )
-                elif attr in ("encoding", "tmf"):  # get those from o-attributes
+                case "encoding" | "tmf":  # handle o- style attributes separately
                     setattr(
                         self,
                         attr,
                         value if value is not None else elem.get(f"o-{attr}"),
                     )
-                elif attr == "usagecount":  # try to coerce int values
-                    if value is None:
-                        value = elem.get(attr)
-                    try:
-                        setattr(self, attr, int(value))
-                    except (ValueError, TypeError):
-                        setattr(self, attr, value)
-                elif attr in (
-                    "notes",
-                    "props",
-                    "tus",
-                    "tuvs",
-                    "udes",
-                    "maps",
-                    "segment",
-                ):
-                    setattr(self, attr, value)
-                elif attr == "segment":  # parse segment if needed using parse_inline
+                case "usagecount":  # handle int separately
+                    setattr(self, attr, _parse_int_attr(elem, attr, value))
+                case "segment":  # parse segment using parse_inline
                     setattr(
                         self,
                         attr,
                         value if value is not None else _parse_inline(elem.find("seg")),
                     )
-                else:
+                case _:
                     setattr(self, attr, value if value is not None else elem.get(attr))
-            else:
-                assert_never(attr)
 
-    def to_element(self) -> _Element:
-        raise NotImplementedError
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = Element(self.__class__.__name__.lower())
+        for attr in self.__slots__:
+            val = getattr(self, attr)
+            if val is None:
+                continue
+            match attr:
+                case "creationdate" | "changedate" | "lastusagedate":
+                    try:
+                        val = _export_dt(attr, val)
+                    except ValueError as e:
+                        if not force_str:
+                            raise e
+                    elem.set(attr, val)
+                case "usagecount":
+                    try:
+                        val = _export_int(attr, val)
+                    except ValueError as e:
+                        if not force_str:
+                            raise e
+                    elem.set(attr, val)
+                case "lang":
+                    if not isinstance(val, str):
+                        if not force_str:
+                            raise TypeError(
+                                f"Invalid value for '{attr}'. {val} is not a string"
+                            )
+                        val = str(val)
+                    elem.set("{http://www.w3.org/XML/1998/namespace}lang", val)
+                case "tmf" | "encoding":
+                    if not isinstance(val, str):
+                        if not force_str:
+                            raise TypeError(
+                                f"Invalid value for '{attr}'. {val} is not a string"
+                            )
+                        val = str(val)
+                    elem.set(f"o-{attr}", val)
+                case "notes" | "props" | "tuvs" | "tus" | "udes" | "maps" | "header":
+                    continue
+                case "text":
+                    elem.text = val
+                case "segment":
+                    if isinstance(val, str):
+                        SubElement(elem, "seg").text = val
+                case _:
+                    if not isinstance(val, str):
+                        if not force_str:
+                            raise TypeError(
+                                f"Invalid value for '{attr}'. {val} is not a string"
+                            )
+                        val = str(val)
+                    elem.set(attr, val)
+        return elem
 
     def __getitem__(self, key: str) -> str | None:
         if key in self.__slots__:
@@ -136,9 +196,6 @@ class Structural:
         else:
             raise KeyError(f"'{key}' is not an attribute of {self.__class__.__name__}")
 
-    # mypy will always complain here since this method can't know it has the
-    # correct correct attributes, but we know it does since we're calling it
-    # correctly ourselves so we force mypy to ignore this
     @no_type_check
     def _parse_children(self, elem: XmlElementLike, mask: set[str]) -> None:
         for child in elem:
@@ -189,6 +246,7 @@ class Map(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
+        strict: bool = True,
         *,
         unicode: str | None = None,
         code: str | None = None,
@@ -203,38 +261,12 @@ class Map(Structural):
         vals.pop("__class__")
         super().__init__(**vals)
 
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file or
-            manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        """
-        elem = Element("map")
-
-        # Required Attributes
+    def to_element(self, force_str: bool = False) -> _Element:
+        # Check required attributes
         if self.unicode is None:
             raise AttributeError("Attribute 'unicode' is required for Map Elements")
-        elem.set("unicode", self.unicode)
 
-        # Optional Attributes
-        for attr in ("code", "ent", "subst"):
-            if getattr(self, attr) is not None:
-                elem.set(attr, getattr(self, attr))
-        return elem
+        return super().to_element(force_str)
 
 
 class Ude(Structural):
@@ -264,6 +296,7 @@ class Ude(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
+        strict: bool = True,
         *,
         name: str | None = None,
         base: str | None = None,
@@ -276,53 +309,24 @@ class Ude(Structural):
         super().__init__(**vals)
         if self.maps is None:
             self.maps = []
-            self._parse_children(
-                elem=elem if elem is not None else _Empty_Elem_, mask={"map"}
-            )
+            if elem is not None:
+                self._parse_children(elem=elem, mask={"map"})
 
-    def to_element(self):
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-        Will recursively call :func:`Map.to_element()` on all the :class:`Map`
-        elements and append them to the main Ude element before returning.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file
-            or manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        """
-        elem = Element("ude")
-
-        # Required Attributes
+    def to_element(self, force_str: bool = False) -> _Element:
+        # Check required attributes
         if self.name is None:
             raise AttributeError("Attribute 'name' is required for Ude Elements")
-        elem.set("name", self.name)
 
-        # Optional Attributes/Sequence Attributes
-        if self.base is None:
-            if len(self.maps):
-                for map in self.maps:
-                    if map.code is not None:
-                        raise AttributeError(
-                            "Attribute 'base' is required for Ude Elements if "
-                            "at least 1 or more Map Elements have a 'code'"
-                            " attribute"
-                        )
-                    elem.append(map.to_element())
-        else:
-            elem.extend(map.to_element() for map in self.maps)
-            elem.set("base", self.base)
+        elem = super().to_element(force_str)
+
+        # Add maps and check if base is required, raise an error if needed
+        if self.maps is not None:
+            for map in self.maps:
+                if map.code is not None and self.base is None:
+                    raise AttributeError(
+                        "Attribute 'base' is required for Ude Elements with maps"
+                    )
+                elem.append(map.to_element(force_str))
         return elem
 
     def __iter__(self) -> Generator[Map, None, None]:
@@ -362,6 +366,7 @@ class Note(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
+        strict: bool = True,
         *,
         text: str | None = None,
         lang: str | None = None,
@@ -373,39 +378,12 @@ class Note(Structural):
         vals.pop("__class__")
         super().__init__(**vals)
 
-    def to_element(self):
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file or
-            manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        """
-        elem = Element("note")
-
-        # Required Attributes
+    def to_element(self, force_str: bool = False) -> _Element:
+        # Check required attributes
         if self.text is None:
             raise AttributeError("Attribute 'text' is required for Note Elements")
-        elem.text = self.text
 
-        # Optional Attributes
-        if self.lang is not None:
-            elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
-        if self.encoding is not None:
-            elem.set("o-encoding", self.encoding)
-        return elem
+        return super().to_element(force_str)
 
 
 class Prop(Structural):
@@ -448,6 +426,7 @@ class Prop(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
+        strict: bool = True,
         *,
         text: str | None = None,
         type: str | None = None,
@@ -460,42 +439,14 @@ class Prop(Structural):
         vals.pop("__class__")
         super().__init__(**vals)
 
-    def to_element(self):
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file or
-            manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        """
-        elem = Element("prop")
-
-        # Required Attributes
+    def to_element(self, force_str: bool = False) -> _Element:
+        # Check required attributes
         if self.text is None:
-            raise AttributeError("Attribute 'text' is required for Prop Elements")
-        elem.text = self.text
+            raise AttributeError("Attribute 'text' is required for Note Elements")
         if self.type is None:
-            raise AttributeError("Attribute 'type' is required for Prop Elements")
-        elem.set("type", self.type)
+            raise AttributeError("Attribute 'type' is required for Note Elements")
 
-        # Optional Attributes
-        if self.lang is not None:
-            elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
-        if self.encoding is not None:
-            elem.set("o-encoding", self.encoding)
-        return elem
+        return super().to_element(force_str)
 
 
 class Header(Structural):
@@ -619,6 +570,7 @@ class Header(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
+        strict: bool = True,
         *,
         creationtool: str | None = None,
         creationtoolversion: str | None = None,
@@ -653,93 +605,31 @@ class Header(Structural):
         if self.props is None:
             self.props = []
             mask.add("prop")
-        if len(mask) > 0:
-            self._parse_children(
-                elem=elem if elem is not None else _Empty_Elem_,
-                mask=mask,
-            )
+        if len(mask) > 0 and elem is not None:
+            self._parse_children(elem=elem, mask=mask)
 
-    def to_element(self):
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Attribute with ``datetime`` values will be converted to a string.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file or
-            manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        ValueError
-            Raised if segtype is not one of the accepted values
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        """
-        elem = Element("header")
-
-        # Required Attributes
+    def to_element(self, force_str: bool = False) -> _Element:
+        # Check required attributes
         for attr in (
             "creationtool",
             "creationtoolversion",
+            "tmf",
             "adminlang",
             "srclang",
             "datatype",
+            "encoding",
         ):
             if getattr(self, attr) is None:
                 raise AttributeError(
                     f"Attribute '{attr}' is required for Header Elements"
                 )
-            elem.set(attr, getattr(self, attr))
-        if self.segtype is None:
-            raise AttributeError("Attribute 'segtype' is required for Header Elements")
-        elif self.segtype not in ("block", "paragraph", "sentence", "phrase"):
-            raise ValueError(
-                "Attribute 'segtype' must be one of"
-                '"block", "paragraph", "sentence", "phrase"'
-                f"but got {self.segtype}"
-            )
-        else:
-            elem.set("segtype", self.segtype)
-        if self.tmf is None:
-            raise AttributeError("Attribute 'tmf' is required for Header Elements")
-        elem.set("o-tmf", self.tmf)
+        elem = super().to_element(force_str)
 
-        # Optional Attributes
-        if self.encoding is not None:
-            elem.set("o-encoding", self.encoding)
-        for attr in ("creationdate", "changedate"):
-            if (val := getattr(self, attr)) is not None:
-                if isinstance(val, datetime):
-                    elem.set(attr, val.strftime(r"%Y%m%dT%H%M%SZ"))
-                elif isinstance(val, str):
-                    try:
-                        elem.set(
-                            attr,
-                            datetime.strptime(val, r"%Y%m%dT%H%M%SZ").strftime(
-                                r"%Y%m%dT%H%M%SZ"
-                            ),
-                        )
-                    except ValueError as e:
-                        raise ValueError(
-                            f"Invalid valid for '{attr}'. {val} does not follow"
-                            " the YYYYMMDDTHHMMSS format"
-                        ) from e
-            elem.set("creationid", self.creationid)
-        if self.changeid is not None:
-            elem.set("changeid", self.changeid)
+        # Add children
+        elem.extend(tuple(note.to_element(force_str) for note in self.notes))
+        elem.extend(tuple(prop.to_element(force_str) for prop in self.props))
+        elem.extend(tuple(ude.to_element(force_str) for ude in self.udes))
 
-        # Sequence Attributes
-        elem.extend(note.to_element() for note in self.notes)
-        elem.extend(prop.to_element() for prop in self.props)
-        elem.extend(ude.to_element() for ude in self.udes)
         return elem
 
 
@@ -857,6 +747,7 @@ class Tuv(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
+        strict: bool = True,
         *,
         segment: MutableSequence[str | Inline] | str | None = None,
         lang: str | None = None,
@@ -879,151 +770,55 @@ class Tuv(Structural):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-        mask: set[str] = set()
         if self.segment is None:
             if elem is not None and elem.find("seg") is not None:
                 self.segment = _parse_inline(elem.find("seg"))
             else:
                 self.segment = None
+
+        mask: set[str] = set()
         if self.notes is None:
             self.notes = []
             mask.add("note")
         if self.props is None:
             self.props = []
             mask.add("prop")
-        if len(mask) > 0:
-            self._parse_children(
-                elem=elem if elem is not None else _Empty_Elem_,
-                mask=mask,
-            )
+        if len(mask) > 0 and elem is not None:
+            self._parse_children(elem=elem, mask=mask)
 
     def __iter__(self) -> Generator[str | Inline, None, None]:
         yield from self.segment
 
-    def to_element(self):
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
-
-        Attribute with ``datetime`` values will be converted to a string.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file or
-            manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        ValueError
-            Raised if :attr:`segtype` is not one of the accepted values,
-            if 2 or more `Bpt` elements have the same 'i' attribute or if there
-            is an orphaned `Bpt` or `Ept` element
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        """
-        elem = Element("tuv")
-
-        # Sequence Attributes
-        # Need to have these first to follow the DTD
-        elem.extend(note.to_element() for note in self.notes)
-        elem.extend(prop.to_element() for prop in self.props)
-
-        # Required Attributes
+    def to_element(self, force_str: bool = False) -> _Element:
+        # Check required attributes
+        if self.lang is None:
+            raise ValueError("Attribute 'lang' is required for Header Elements")
         if self.segment is None:
-            raise AttributeError("Attribute 'lang' is required for Tuv Elements")
-        elem.set("{http://www.w3.org/XML/1998/namespace}lang", self.lang)
+            raise ValueError("Attribute 'segment' is required for Header Elements")
+        _check_seg(self.segment)
+        elem = super().to_element(force_str)
 
-        # Segment logic
-        if self.segment is None:
-            raise AttributeError("Attribute 'segment' is required for Tuv Elements")
-        seg = SubElement(elem, "seg")
-        if isinstance(self.segment, str):
-            seg.text = self.segment
-        else:
+        # Create <seg>
+        if elem.find("seg") is None:
+            seg = SubElement(elem, "seg")
+            seg.text = ""
+            last_elem: _Element | None = None
             for item in self.segment:
-                if isinstance(item, str):
-                    # If seg has already has another inline, add or append
-                    # the text as the tail of that element
-                    if len(seg):
-                        seg[-1].tail = (
-                            seg[-1].tail + item if seg[-1].tail is not None else item
-                        )
-                    # If seg has no inline, add the text as the text of the element
+                if isinstance(item, Inline):
+                    seg.append(item.to_element(force_str))
+                    last_elem = seg[-1]
+                else:
+                    if last_elem is not None:
+                        if last_elem.tail is None:
+                            last_elem.tail = item
+                        else:
+                            last_elem.tail += item
                     else:
-                        seg.text = seg.text + item if seg.text is not None else item
-                else:
-                    # else just append the element
-                    seg.append(item.to_element())
+                        seg.text += item
 
-        # Check bpt 'i' attributes are unique and each bpt has an ept
-        bpt, ept, all_i = 0, 0, []
-        for child in seg.iter("bpt", "ept"):
-            if child.tag == "bpt":
-                bpt += 1
-                if (i := child.get("i")) not in all_i:
-                    all_i.append(i)
-                else:
-                    raise ValueError(
-                        "All 'i' attributes must be unique inside a single segment"
-                    )
-            else:
-                ept += 1
-        if bpt > ept:
-            raise ValueError(
-                "Every Bpt must have a corresponding Ept element but at least "
-                "1 Bpt element is orhpaned"
-            )
-        elif ept > bpt:
-            raise ValueError(
-                "Every Bpt must have a corresponding Ept element but at least "
-                "1 Ept element is orhpaned"
-            )
-
-        # Optional Attributes
-        # str attributes
-        for attr in (
-            "creationtool",
-            "creationtoolversion",
-            "creationid",
-            "datatype",
-            "changeid",
-        ):
-            if getattr(self, attr) is not None:
-                elem.set(attr, getattr(self, attr))
-
-        if self.tmf is not None:
-            elem.set("o-tmf", self.tmf)
-        if self.encoding is not None:
-            elem.set("o-encoding", self.encoding)
-
-        # int attributes
-        if self.usagecount is not None:
-            if isinstance(self.usagecount, int):
-                elem.set("usagecount", str(self.usagecount))
-            else:
-                elem.set("usagecount", self.usagecount)
-
-        # datetime attributes
-        for attr in ("creationdate", "changedate", "lastusagedate"):
-            if (val := getattr(self, attr)) is not None:
-                if isinstance(val, datetime):
-                    elem.set(attr, val.strftime(r"%Y%m%dT%H%M%SZ"))
-                elif isinstance(val, str):
-                    try:
-                        elem.set(
-                            attr,
-                            datetime.strptime(val, r"%Y%m%dT%H%M%SZ"),
-                        )
-                    except ValueError as e:
-                        raise ValueError(
-                            f"Invalid valid for '{attr}'. {val} does not follow"
-                            " the YYYYMMDDTHHMMSS format"
-                        ) from e
+        # Add children
+        elem.extend(tuple(note.to_element(force_str) for note in self.notes))
+        elem.extend(tuple(prop.to_element(force_str) for prop in self.props))
         return elem
 
 
@@ -1161,6 +956,7 @@ class Tu(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
+        strict: bool = True,
         *,
         tuid: str | None = None,
         encoding: str | None = None,
@@ -1195,91 +991,20 @@ class Tu(Structural):
         if self.props is None:
             self.props = []
             mask.add("prop")
-        if len(mask) > 0:
-            self._parse_children(
-                elem=elem if elem is not None else _Empty_Elem_,
-                mask=mask,
-            )
+        if len(mask) > 0 and elem is not None:
+            self._parse_children(elem=elem, mask=mask)
 
     def __iter__(self) -> Generator[Tuv, None, None]:
         yield from self.tuvs
 
-    def to_element(self):
-        """
-        Converts the object into an lxml `_Element`, validating that all
-        required attribtues are present, skipping any optional attributes with
-        a value of `None` and changing the attribute name to make the resulting
-        `_Element` spec-compliant.
+    def to_element(self, force_str: bool = False) -> _Element:
+        elem = super().to_element(force_str)
 
-        Attribute with ``datetime`` values will be converted to a string.
+        # Add children
+        elem.extend(tuple(note.to_element(force_str) for note in self.notes))
+        elem.extend(tuple(prop.to_element(force_str) for prop in self.props))
+        elem.extend(tuple(tuv.to_element(force_str) for tuv in self.tuvs))
 
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file or
-            manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        ValueError
-            Raised if :attr:`segtype` is not one of the accepted values,
-            if 2 or more `Bpt` elements have the same 'i' attribute or if there
-            is an orphaned `Bpt` or `Ept` element
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        """
-        elem = Element("tu")
-
-        # Sequence Attributes
-        # need to have note and prop first to follow DTD
-        elem.extend(note.to_element() for note in self.notes)
-        elem.extend(prop.to_element() for prop in self.props)
-        elem.extend(tuv.to_element() for tuv in self.tuvs)
-
-        # Required Attributes
-
-        # Optional Attributes
-        # str attributes
-        for attr in (
-            "creationtool",
-            "creationtoolversion",
-            "creationid",
-            "datatype",
-            "changeid",
-        ):
-            if getattr(self, attr) is not None:
-                elem.set(attr, getattr(self, attr))
-
-        if self.tmf is not None:
-            elem.set("o-tmf", self.tmf)
-        if self.encoding is not None:
-            elem.set("o-encoding", self.encoding)
-
-        # int attributes
-        if self.usagecount is not None:
-            if isinstance(self.usagecount, int):
-                elem.set("usagecount", str(self.usagecount))
-            else:
-                elem.set("usagecount", self.usagecount)
-
-        # datetime attributes
-        for attr in ("creationdate", "changedate", "lastusagedate"):
-            if (val := getattr(self, attr)) is not None:
-                if isinstance(val, datetime):
-                    elem.set(attr, val.strftime(r"%Y%m%dT%H%M%SZ"))
-                elif isinstance(val, str):
-                    try:
-                        elem.set(
-                            attr,
-                            datetime.strptime(val, r"%Y%m%dT%H%M%SZ"),
-                        )
-                    except ValueError as e:
-                        raise ValueError(
-                            f"Invalid valid for '{attr}'. {val} does not follow"
-                            " the YYYYMMDDTHHMMSS format"
-                        ) from e
         return elem
 
 
@@ -1305,6 +1030,7 @@ class Tmx(Structural):
     def __init__(
         self,
         elem: XmlElementLike | None = None,
+        strict: bool = True,
         *,
         header: Header | None = None,
         tus: MutableSequence[Tu] | None = None,
@@ -1318,41 +1044,16 @@ class Tmx(Structural):
         if self.tus is None:
             self.tus = []
             mask.add("tu")
-        if len(mask) > 0:
-            self._parse_children(
-                elem=elem.find("body") if elem is not None else _Empty_Elem_,
-                mask=mask,
-            )
+        if len(mask) > 0 and elem is not None:
+            self._parse_children(elem=elem.find("body"), mask=mask)
 
     def __iter__(self) -> Generator[Tu, None, None]:
         yield from self.tus
 
-    def to_element(self) -> _Element:
-        """
-        Converts the object into an lxml `_Element`. Always sets the `version`
-        attribute to "1.4b" and converts the header and all the
-        :class:`Tu` to xml elements as well.
-
-        Returns
-        -------
-        _Element
-            A Tmx compliant lxml Element, ready to written to a file or
-            manipulated however you see fit.
-
-        Raises
-        ------
-        AttributeError
-            Raised if a required attribute has a value of `None`
-        TypeError
-            Raised by lxml if trying to set a value that is not a `str`
-        """
+    def to_element(self, force_str: bool = False) -> _Element:
         elem = Element("tmx")
         elem.set("version", "1.4")
-        if self.header is None:
-            raise AttributeError(
-                "The 'header' attribute of the Tmx element cannot be None"
-            )
-        elem.append(self.header.to_element())
+        elem.append(self.header.to_element(force_str))
         body = SubElement(elem, "body")
-        body.extend([tu.to_element() for tu in self.tus])
+        body.extend(tuple(tu.to_element(force_str) for tu in self.tus))
         return elem
