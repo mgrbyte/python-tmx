@@ -194,3 +194,9 @@ class TestHeader(TestCase):
         self.assertEqual(elem.find("prop").text, "prop")
         self.assertEqual(elem.find("prop").get("type"), "x-test")
         self.assertEqual(elem.find("ude").attrib["name"], "ude")
+
+        # Dict Value
+        header.notes = {1: Note(text="text")}.values()
+        elem = header.to_element()
+        self.assertEqual(len(elem.findall("note")), 1)
+        self.assertEqual(elem.find("note").text, "text")

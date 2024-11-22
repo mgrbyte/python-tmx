@@ -5,6 +5,7 @@ They are the building blocks of a tmx file.
 
 from collections.abc import Generator, MutableSequence
 from datetime import datetime
+from itertools import zip_longest
 from typing import Literal, no_type_check
 
 from lxml.etree import Element, SubElement, _Element
@@ -26,26 +27,26 @@ def _check_seg(seg: MutableSequence[str | Inline] | str) -> None:
         return
     bpt_i_list: list[int] = []
     ept_i_list: list[int] = []
-    for item in seg:
+    for idx, item in enumerate(seg):
         if isinstance(item, Bpt):
             if item.i in bpt_i_list:
-                raise ValueError(f"Duplicate Bpt with i={item.i}")
+                raise ValueError(f"Duplicate Bpt with i={item.i} at index: {idx}")
             bpt_i_list.append(item.i)
         elif isinstance(item, Ept):
             if item.i in ept_i_list:
-                raise ValueError(f"Duplicate Ept with i={item.i}")
+                raise ValueError(f"Duplicate Ept with i={item.i} at index: {idx}")
             ept_i_list.append(item.i)
-        elif isinstance(item, str):
+        elif isinstance(item, (str, Inline)):
             pass
         else:
-            raise ValueError(f"Invalid item in segment: {item}")
-    if len(bpt_i_list) > len(set(bpt_i_list)):
-        raise ValueError("Too many Bpt")
-    if len(ept_i_list) < len(set(ept_i_list)):
-        raise ValueError("Too many Ept")
-    for i in bpt_i_list:
-        if i not in ept_i_list:
-            raise ValueError(f"Bpt with i={i} is not followed by an Ept")
+            raise TypeError(
+                f"Invalid item in segment:\ntype: {item.__class__.__name__}\nvalue: {item}\nindex: {idx}"
+            )
+    for bpt, ept in zip_longest(sorted(bpt_i_list), sorted(ept_i_list), fillvalue=None):
+        if bpt is None or bpt != ept:
+            raise ValueError(f"Ept with i={ept} is missing its corresponding Bpt")
+        if ept is None or ept != bpt:
+            raise ValueError(f"Bpt with i={bpt} is missing its corresponding Ept")
 
 
 class Structural:
@@ -161,13 +162,82 @@ class Structural:
                             )
                         val = str(val)
                     elem.set(f"o-{attr}", val)
-                case "notes" | "props" | "tuvs" | "tus" | "udes" | "maps" | "header":
-                    continue
+                case "notes":
+                    if val is None:
+                        continue
+                    for item in val:
+                        if isinstance(item, Note):
+                            elem.append(item.to_element(force_str))
+                        else:
+                            raise TypeError(f"{item} is not a Note")
+                case "props":
+                    if val is None:
+                        continue
+                    for item in val:
+                        if isinstance(item, Prop):
+                            elem.append(item.to_element(force_str))
+                        else:
+                            raise TypeError(f"{item} is not a Prop")
+                case "tuvs":
+                    if val is None:
+                        continue
+                    for item in val:
+                        if isinstance(item, Tuv):
+                            elem.append(item.to_element(force_str))
+                        else:
+                            raise TypeError(f"{item} is not a Tuv")
+                case "tus":
+                    if val is None:
+                        continue
+                    for item in val:
+                        body = SubElement(elem, "body")
+                        if isinstance(item, Tu):
+                            body.append(item.to_element(force_str))
+                        else:
+                            raise TypeError(f"{item} is not a Tu")
+                case "udes":
+                    if val is None:
+                        continue
+                    for item in val:
+                        if isinstance(item, Ude):
+                            elem.append(item.to_element(force_str))
+                        else:
+                            raise TypeError(f"{item} is not a Ude")
+                case "maps":
+                    if val is None:
+                        continue
+                    for item in val:
+                        if isinstance(item, Map):
+                            if item.code is not None and getattr(self, "base") is None:
+                                raise AttributeError(
+                                    "Attribute 'base' is required for Ude Elements with maps"
+                                )
+                            elem.append(item.to_element(force_str))
+                        else:
+                            raise TypeError(f"{item} is not a Map")
+                case "header":
+                    elem.append(val.to_element(force_str))
                 case "text":
                     elem.text = val
                 case "segment":
+                    seg = SubElement(elem, "seg")
                     if isinstance(val, str):
-                        SubElement(elem, "seg").text = val
+                        seg.text = val
+                    else:
+                        seg.text = ""
+                        last_elem: _Element | None = None
+                        for item in val:
+                            if isinstance(item, Inline):
+                                seg.append(item.to_element(force_str))
+                                last_elem = seg[-1]
+                            else:
+                                if last_elem is not None:
+                                    if last_elem.tail is None:
+                                        last_elem.tail = item
+                                    else:
+                                        last_elem.tail += item
+                                else:
+                                    seg.text += item
                 case _:
                     if not isinstance(val, str):
                         if not force_str:
@@ -316,18 +386,7 @@ class Ude(Structural):
         # Check required attributes
         if self.name is None:
             raise AttributeError("Attribute 'name' is required for Ude Elements")
-
-        elem = super().to_element(force_str)
-
-        # Add maps and check if base is required, raise an error if needed
-        if self.maps is not None:
-            for map in self.maps:
-                if map.code is not None and self.base is None:
-                    raise AttributeError(
-                        "Attribute 'base' is required for Ude Elements with maps"
-                    )
-                elem.append(map.to_element(force_str))
-        return elem
+        return super().to_element(force_str)
 
     def __iter__(self) -> Generator[Map, None, None]:
         yield from self.maps
@@ -623,14 +682,7 @@ class Header(Structural):
                 raise AttributeError(
                     f"Attribute '{attr}' is required for Header Elements"
                 )
-        elem = super().to_element(force_str)
-
-        # Add children
-        elem.extend(tuple(note.to_element(force_str) for note in self.notes))
-        elem.extend(tuple(prop.to_element(force_str) for prop in self.props))
-        elem.extend(tuple(ude.to_element(force_str) for ude in self.udes))
-
-        return elem
+        return super().to_element(force_str)
 
 
 class Tuv(Structural):
@@ -770,11 +822,6 @@ class Tuv(Structural):
         vals.pop("self")
         vals.pop("__class__")
         super().__init__(**vals)
-        if self.segment is None:
-            if elem is not None and elem.find("seg") is not None:
-                self.segment = _parse_inline(elem.find("seg"))
-            else:
-                self.segment = None
 
         mask: set[str] = set()
         if self.notes is None:
@@ -792,34 +839,11 @@ class Tuv(Structural):
     def to_element(self, force_str: bool = False) -> _Element:
         # Check required attributes
         if self.lang is None:
-            raise ValueError("Attribute 'lang' is required for Header Elements")
+            raise AttributeError("Attribute 'lang' is required for Tuv Elements")
         if self.segment is None:
-            raise ValueError("Attribute 'segment' is required for Header Elements")
+            raise AttributeError("Attribute 'segment' is required for Tuv Elements")
         _check_seg(self.segment)
-        elem = super().to_element(force_str)
-
-        # Create <seg>
-        if elem.find("seg") is None:
-            seg = SubElement(elem, "seg")
-            seg.text = ""
-            last_elem: _Element | None = None
-            for item in self.segment:
-                if isinstance(item, Inline):
-                    seg.append(item.to_element(force_str))
-                    last_elem = seg[-1]
-                else:
-                    if last_elem is not None:
-                        if last_elem.tail is None:
-                            last_elem.tail = item
-                        else:
-                            last_elem.tail += item
-                    else:
-                        seg.text += item
-
-        # Add children
-        elem.extend(tuple(note.to_element(force_str) for note in self.notes))
-        elem.extend(tuple(prop.to_element(force_str) for prop in self.props))
-        return elem
+        return super().to_element(force_str)
 
 
 class Tu(Structural):
@@ -998,14 +1022,9 @@ class Tu(Structural):
         yield from self.tuvs
 
     def to_element(self, force_str: bool = False) -> _Element:
-        elem = super().to_element(force_str)
-
-        # Add children
-        elem.extend(tuple(note.to_element(force_str) for note in self.notes))
-        elem.extend(tuple(prop.to_element(force_str) for prop in self.props))
-        elem.extend(tuple(tuv.to_element(force_str) for tuv in self.tuvs))
-
-        return elem
+        if len(self.tuvs) < 1:
+            raise ValueError("At least one tuv is required for a tu element")
+        return super().to_element(force_str)
 
 
 class Tmx(Structural):
@@ -1051,9 +1070,6 @@ class Tmx(Structural):
         yield from self.tus
 
     def to_element(self, force_str: bool = False) -> _Element:
-        elem = Element("tmx")
+        elem = super().to_element(force_str)
         elem.set("version", "1.4")
-        elem.append(self.header.to_element(force_str))
-        body = SubElement(elem, "body")
-        body.extend(tuple(tu.to_element(force_str) for tu in self.tus))
         return elem

@@ -403,6 +403,7 @@ class Ph(Inline):
         elem: XmlElementLike | None = None,
         *,
         content: str | MutableSequence[str | Sub] | None = None,
+        i: int | None = None,
         x: int | None = None,
         assoc: Literal["p", "f", "b"] | None = None,
     ) -> None:
