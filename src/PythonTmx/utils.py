@@ -1,7 +1,11 @@
+import xml.etree.ElementTree as ET
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeAlias
 
-from PythonTmx import XmlElementLike
+import lxml.etree as et
+
+EmptyElement = et.Element("empty")
+XmlElementLike: TypeAlias = et._Element | ET.Element
 
 
 def _parse_int_attr(

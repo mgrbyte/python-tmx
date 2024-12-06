@@ -5,16 +5,17 @@ They are the element that actually contain the text of the translation.
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from collections.abc import MutableSequence
-from typing import Literal
+from typing import Literal, TypeAlias
 
-from lxml.etree import Element, _Element
+import lxml.etree as et
 from typing_extensions import deprecated
 
-from PythonTmx import XmlElementLike
 from PythonTmx.utils import _export_int, _parse_int_attr
 
-EmptyElement = Element("empty")
+EmptyElement = et.Element("empty")
+XmlElementLike: TypeAlias = et._Element | ET.Element
 
 
 def _parse_inline(
@@ -54,7 +55,7 @@ def _parse_inline(
 
 
 def _export_inline(
-  elem: _Element,
+  elem: et._Element,
   content: MutableSequence[str | Inline] | str,
   force_str: bool,
 ) -> None:
@@ -131,8 +132,8 @@ class Inline:
         case _:
           setattr(self, attr, value if value is not None else elem.get(attr))
 
-  def to_element(self, force_str: bool = False) -> _Element:
-    elem = Element(self.__class__.__name__.lower())
+  def to_element(self, force_str: bool = False) -> et._Element:
+    elem = et.Element(self.__class__.__name__.lower())
     for attr in self.__slots__:
       val = getattr(self, attr)
       if val is None:
@@ -208,7 +209,7 @@ class Bpt(Inline):
     vals.pop("__class__")
     super().__init__(**vals)
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Required Attributes
     if self.i is None:
       raise AttributeError("Attribute 'i' is required for Bpt Elements")
@@ -250,7 +251,7 @@ class Ept(Inline):
     vals.pop("__class__")
     super().__init__(**vals)
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Required Attributes
     if self.i is None:
       raise AttributeError("Attribute 'i' is required for Ept Elements")
@@ -350,7 +351,7 @@ class It(Inline):
     vals.pop("__class__")
     super().__init__(**vals)
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Required Attributes
     if self.pos is None:
       raise AttributeError("Attribute 'pos' is required for It Elements")

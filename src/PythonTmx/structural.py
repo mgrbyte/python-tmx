@@ -3,16 +3,16 @@ This module contains all the structural elements of a tmx file.
 They are the building blocks of a tmx file.
 """
 
+import xml.etree.ElementTree as ET
 from collections.abc import Generator, Iterable, MutableSequence
 from datetime import datetime
 from itertools import zip_longest
 from os import PathLike
 from pathlib import Path
-from typing import Literal, no_type_check
+from typing import Literal, TypeAlias, no_type_check
 
-from lxml.etree import Element, ElementTree, SubElement, _Element
+import lxml.etree as et
 
-from PythonTmx import XmlElementLike
 from PythonTmx.inline import Bpt, Ept, Inline, _parse_inline
 from PythonTmx.utils import (
   _export_dt,
@@ -21,11 +21,12 @@ from PythonTmx.utils import (
   _parse_int_attr,
 )
 
-EmptyElement = Element("empty")
+EmptyElement = et.Element("empty")
+XmlElementLike: TypeAlias = et._Element | ET.Element
 
 
 def _export_children(
-  elem: _Element,
+  elem: et._Element,
   attr: str,
   type: type,
   value: Iterable["Structural"],
@@ -40,13 +41,15 @@ def _export_children(
 
 
 def _export_segment(
-  elem: _Element, segment: MutableSequence[str | Inline] | str, force_str: bool = False
+  elem: et._Element,
+  segment: MutableSequence[str | Inline] | str,
+  force_str: bool = False,
 ) -> None:
   if isinstance(segment, str):
     elem.text = segment
   else:
     elem.text = ""
-    last_elem: _Element = elem
+    last_elem: et._Element = elem
     for item in segment:
       if isinstance(item, Inline):
         elem.append(item.to_element(force_str))
@@ -162,8 +165,8 @@ class Structural:
         case _:
           setattr(self, attr, value if value is not None else elem.get(attr))
 
-  def to_element(self, force_str: bool = False) -> _Element:
-    elem = Element(self.__class__.__name__.lower())
+  def to_element(self, force_str: bool = False) -> et._Element:
+    elem = et.Element(self.__class__.__name__.lower())
     for attr in self.__slots__:
       val = getattr(self, attr)
       if val is None:
@@ -186,7 +189,9 @@ class Structural:
         case "udes":
           _export_children(elem, attr, Ude, val, force_str)
           continue
-        case "maps":
+        case "maps":  # does the same as export_children but since we need to
+          # check for the base attribute we do it manually to avoid looping over
+          # the maps twice or addind an extra check in export_children
           for map in val:
             if not isinstance(map, Map):
               raise TypeError(f"Invalid value for '{attr}'. {map} is not a Map object")
@@ -200,7 +205,7 @@ class Structural:
           _export_children(elem, attr, Tuv, val, force_str)
           continue
         case "tus":
-          _export_children(SubElement(elem, "body"), attr, Tu, val, force_str)
+          _export_children(et.SubElement(elem, "body"), attr, Tu, val, force_str)
           continue
         case "header":
           if not isinstance(val, Header):
@@ -213,7 +218,7 @@ class Structural:
           elem.text = val
           continue
         case "segment":
-          _export_segment(SubElement(elem, "seg"), val, force_str)
+          _export_segment(et.SubElement(elem, "seg"), val, force_str)
           continue
         case _:
           pass
@@ -307,7 +312,7 @@ class Map(Structural):
     vals.pop("__class__")
     super().__init__(**vals)
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Check required attributes
     if self.unicode is None:
       raise AttributeError("Attribute 'unicode' is required for Map Elements")
@@ -358,7 +363,7 @@ class Ude(Structural):
       if elem is not None:
         self._parse_children(elem=elem, mask={"map"})
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Check required attributes
     if self.name is None:
       raise AttributeError("Attribute 'name' is required for Ude Elements")
@@ -372,7 +377,7 @@ class Note(Structural):
   """
   `Note` — Used for comments.
 
-  Contrary to the :class:`Prop`, the `Note` Element is meant only to have text.
+  Contrary to the :class:`Prop`, the `Note` et.Element is meant only to have text.
   It serves the same purpose as a basic code comment, providing context and
   additional info to the user reagrding its parent.
   """
@@ -413,7 +418,7 @@ class Note(Structural):
     vals.pop("__class__")
     super().__init__(**vals)
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Check required attributes
     if self.text is None:
       raise AttributeError("Attribute 'text' is required for Note Elements")
@@ -474,7 +479,7 @@ class Prop(Structural):
     vals.pop("__class__")
     super().__init__(**vals)
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Check required attributes
     if self.text is None:
       raise AttributeError("Attribute 'text' is required for Note Elements")
@@ -643,7 +648,7 @@ class Header(Structural):
     if len(mask) > 0 and elem is not None:
       self._parse_children(elem=elem, mask=mask)
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Check required attributes
     for attr in (
       "creationtool",
@@ -810,7 +815,7 @@ class Tuv(Structural):
   def __iter__(self) -> Generator[str | Inline, None, None]:
     yield from self.segment
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     # Check required attributes
     if self.lang is None:
       raise AttributeError("Attribute 'lang' is required for Tuv Elements")
@@ -995,7 +1000,7 @@ class Tu(Structural):
   def __iter__(self) -> Generator[Tuv, None, None]:
     yield from self.tuvs
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     if len(self.tuvs) < 1:
       raise ValueError("At least one tuv is required for a tu element")
     return super().to_element(force_str)
@@ -1043,17 +1048,21 @@ class Tmx(Structural):
   def __iter__(self) -> Generator[Tu, None, None]:
     yield from self.tus
 
-  def to_element(self, force_str: bool = False) -> _Element:
+  def to_element(self, force_str: bool = False) -> et._Element:
     elem = super().to_element(force_str)
     elem.set("version", "1.4")
     return elem
 
-  def to_file(self, path: PathLike | str) -> None:
+  def to_file(
+    self, path: PathLike | str, force_str: bool = False, overwrite: bool = False
+  ) -> None:
     fp: Path = Path(path)
     if not fp.parent.exists():
       raise FileNotFoundError(f"Directory {fp.parent} does not exist")
-    root = self.to_element()
-    tree = ElementTree(root)
+    if fp.exists() and not overwrite:
+      raise FileExistsError(f"File {fp} already exists")
+    root = self.to_element(force_str)
+    tree = et.ElementTree(root)
     tree.write(
       fp,
       encoding="utf-8",

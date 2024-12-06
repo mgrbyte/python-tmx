@@ -14,11 +14,10 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
-dependencies = ["lxml", "typing_extensions"]
-
-[project.optional-dependencies]
-docs = ["sphinx","pydata-sphinx-theme"]
-dev = ["mypy", "types-lxml", "ruff", "sphinx","pydata-sphinx-theme"]
+dependencies = [
+    "lxml>=5.3.0",
+    "typing-extensions>=4.12.2",
+]
 
 [project.urls]
 Homepage = "https://github.com/ChonkyYoshi/python-tmx"
@@ -26,3 +25,14 @@ Issues = "https://github.com/ChonkyYoshi/python-tmx/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "ruff>=0.8.2",
+    "types-lxml>=2024.11.8",
+]
+docs = [
+    "pydata-sphinx-theme>=0.16.0",
+    "sphinx>=8.1.3",
+]
