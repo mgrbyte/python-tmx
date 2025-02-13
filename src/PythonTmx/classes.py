@@ -11,6 +11,35 @@ from warnings import deprecated, warn
 import lxml.etree as lxet
 
 
+def _check_hex_unicode(hex_string):
+  """
+  Internal function that checks if a string is a valid hexadecimal value and if
+  it's associated with any Unicode code point.
+
+  Args:
+    hex_string: The string to check.
+
+  Returns:
+    True if the string is a valid hexadecimal value and is associated with a
+    Unicode code point, False otherwise.
+
+  Raises:
+    ValueError: If the input string is not a valid hexadecimal value.
+  """
+  if not isinstance(hex_string, str):
+    raise TypeError(f"Expected str, not {type(hex_string)}")
+  if not hex_string.startswith("#x"):
+    raise ValueError(f"string should start with '#x' but found {hex_string[:2]!r}")
+  try:
+    code_point = int(hex_string[2:], 16)
+  except ValueError:
+    raise ValueError(f"Invalid hexadecimal string {hex_string!r}")
+  try:
+    chr(code_point)
+  except ValueError:
+    raise ValueError(f"Invalid Unicode code point {code_point!r}")
+
+
 def _make_xml_attrs(obj: object, add_extra: bool = False, **kwargs) -> dict[str, str]:
   if not dc.is_dataclass(obj):
     raise TypeError(f"Expected a dataclass but got {type(obj)!r}")
@@ -392,6 +421,19 @@ class Map:
     ValueError
         If the engine is not recognized.
     """
+    _check_hex_unicode(self.unicode)
+    if self.code is not None:
+      _check_hex_unicode(self.code)
+    if self.subst is not None:
+      if not isinstance(self.subst, str):
+        raise TypeError(f"Expected str for subst but got {type(self.subst)!r}")
+      if not self.subst.isascii():
+        raise ValueError(f"Expected ascii for subst but got {self.subst!r}")
+    if self.ent is not None:
+      if not isinstance(self.ent, str):
+        raise TypeError(f"Expected str for ent but got {type(self.ent)!r}")
+      if not self.ent.isascii():
+        raise ValueError(f"Expected ascii for ent but got {self.ent!r}")
     return _make_elem(
       "map",
       _make_xml_attrs(self, add_extra=add_extra, **kwargs),
