@@ -213,3 +213,9 @@ class TestProp:
     prop = Prop(text="test", type="123")
     assert isinstance(prop.to_element(ENGINE.LXML), lxet._Element)
     assert isinstance(prop.to_element(ENGINE.PYTHON), pyet.Element)
+
+  def test_add_extra(self) -> None:
+    prop = Prop(text="test", type="123")
+    prop_elem = prop.to_element(ENGINE.PYTHON, add_extra=True, extra="test")
+    assert prop_elem.tag == "prop"
+    assert prop_elem.attrib["extra"] == "test"

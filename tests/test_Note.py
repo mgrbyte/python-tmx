@@ -183,3 +183,9 @@ class TestNote:
     note = Note(text="test")
     assert isinstance(note.to_element(ENGINE.LXML), lxet._Element)
     assert isinstance(note.to_element(ENGINE.PYTHON), pyet.Element)
+
+  def test_add_extra(self) -> None:
+    note = Note(text="test")
+    note_elem = note.to_element(ENGINE.PYTHON, add_extra=True, extra="test")
+    assert note_elem.tag == "note"
+    assert note_elem.attrib["extra"] == "test"
