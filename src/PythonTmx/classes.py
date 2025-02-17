@@ -103,12 +103,12 @@ class ENGINE(enum.Enum):
   to a xml element.
   """
 
-  LXML = enum.auto()
+  LXML = "lxml"
   """
   The lxml library, which is faster than the standard library's xml module but
   requires the lxml package to be installed.
   """
-  PYTHON = enum.auto()
+  PYTHON = "python"
   """
   The standard library's xml module, which is slower than lxml but doesn't
   require any extra dependencies.
@@ -584,6 +584,8 @@ class Ude:
     )
     maps = kwargs.pop("maps", self.maps)
     for map_ in maps:
+      if not isinstance(map_, Map):
+        raise TypeError(f"expected Map, got {type(map_)}")
       if not self.base and map_.code:
         raise ValueError("base must be set if at least one map has a code attribute")
       elem.append(map_.to_element(engine))  # type: ignore
@@ -1055,24 +1057,24 @@ class Header:
     creationid = kwargs.get("creationid", element.attrib.get("creationid"))
     changedate = kwargs.get("changedate", element.attrib.get("changedate"))
     changeid = kwargs.get("changeid", element.attrib.get("changeid"))
-    if creationdate is not None:
+    if creationdate is not None and not isinstance(creationdate, dt.datetime):
       try:
         creationdate = dt.datetime.fromisoformat(creationdate)
-      except (ValueError, TypeError):
+      except ValueError:
         warn(f"could not parse {creationdate!r} as a datetime object.")
-    if changedate is not None:
+    if changedate is not None and not isinstance(changedate, dt.datetime):
       try:
         changedate = dt.datetime.fromisoformat(changedate)
-      except (ValueError, TypeError):
+      except ValueError:
         warn(f"could not parse {changedate!r} as a datetime object.")
-    if segtype is not None:
+    if segtype is not None and not isinstance(segtype, SEGTYPE):
       try:
         segtype = SEGTYPE(segtype)
-      except (ValueError, TypeError):
+      except ValueError:
         warn(
           f"Expected one of 'block', 'paragraph', 'sentence' or 'phrase' for segtype but got {segtype!r}."
         )
-    return Header(
+    header = Header(
       creationtool=creationtool,
       creationtoolversion=creationtoolversion,
       segtype=segtype,
@@ -1085,16 +1087,24 @@ class Header:
       creationid=creationid,
       changedate=changedate,
       changeid=changeid,
-      notes=notes
-      if (notes := kwargs.get("notes")) is not None
-      else [Note.from_element(note) for note in element.iter("note")],
-      props=props
-      if (props := kwargs.get("props")) is not None
-      else [Prop.from_element(note) for note in element.iter("prop")],
-      udes=udes
-      if (udes := kwargs.get("udes")) is not None
-      else [Ude.from_element(ude) for ude in element.iter("ude")],
     )
+    mask = set()
+    if kwargs.get("notes") is None:
+      mask.add("note")
+    if kwargs.get("props") is None:
+      mask.add("prop")
+    if kwargs.get("udes") is None:
+      mask.add("ude")
+    for child in element.iter():
+      if child.tag not in mask:
+        pass
+      elif child.tag == "note":
+        header.notes.append(Note.from_element(child))  # type:ignore
+      elif child.tag == "prop":
+        header.props.append(Prop.from_element(child))  # type:ignore
+      elif child.tag == "ude":
+        header.udes.append(Ude.from_element(child))  # type:ignore
+    return header
 
   @tp.overload
   def to_element(
@@ -1145,9 +1155,18 @@ class Header:
     elem = _make_elem(
       "header", _make_xml_attrs(self, add_extra=add_extra, **kwargs), engine
     )
-    elem.extend(note.to_element(engine) for note in self.notes)  # type: ignore
-    elem.extend(prop.to_element(engine) for prop in self.props)  # type: ignore
-    elem.extend(ude.to_element(engine) for ude in self.udes)  # type: ignore
+    for note in self.notes:
+      if not isinstance(note, Note):
+        raise TypeError(f"Expected a Note but got {type(note)!r}")
+      elem.append(note.to_element(engine))  # type: ignore
+    for prop in self.props:
+      if not isinstance(prop, Prop):
+        raise TypeError(f"Expected a Prop but got {type(prop)!r}")
+      elem.append(prop.to_element(engine))  # type: ignore
+    for ude in self.udes:
+      if not isinstance(ude, Ude):
+        raise TypeError(f"Expected a Ude but got {type(ude)!r}")
+      elem.append(ude.to_element(engine))  # type: ignore
     return elem
 
 

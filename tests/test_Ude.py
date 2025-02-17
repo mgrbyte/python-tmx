@@ -237,3 +237,8 @@ class TestUde:
     ude_elem = ude.to_element(ENGINE.PYTHON, add_extra=True, extra="test")
     assert ude_elem.tag == "ude"
     assert ude_elem.attrib["extra"] == "test"
+
+  def test_wrong_map(self) -> None:
+    ude = Ude(name="hello", maps=[13])
+    with pytest.raises(TypeError):
+      ude.to_element()
