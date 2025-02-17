@@ -367,7 +367,16 @@ class Map:
     """
     if str(element.tag) != "map":
       raise ValueError(f"Expected a <map> tag but got {element.tag!r}")
-    return Map(**dict(element.attrib) | kwargs)
+    unicode = kwargs.get("unicode", element.attrib.get("unicode"))
+    code = kwargs.get("code", element.attrib.get("code"))
+    ent = kwargs.get("ent", element.attrib.get("ent"))
+    subst = kwargs.get("subst", element.attrib.get("subst"))
+    return Map(
+      unicode=unicode,
+      code=code,
+      ent=ent,
+      subst=subst,
+    )
 
   @tp.overload
   def to_element(
@@ -516,7 +525,9 @@ class Ude:
         maps = [Map.from_element(map_) for map_ in element.iter("map")]
       else:
         maps = []
-    return Ude(**dict(element.attrib) | kwargs, maps=maps)
+    name = kwargs.get("name", element.attrib.get("name"))
+    base = kwargs.get("base", element.attrib.get("base"))
+    return Ude(name=name, base=base, maps=maps)
 
   @tp.overload
   def to_element(
