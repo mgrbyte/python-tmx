@@ -140,6 +140,16 @@ class TestMap:
     with pytest.raises(ValueError):
       map.to_element()
 
+  def test_incorrect_ent_export(self) -> None:
+    map = Map(unicode="#xF8FF", ent="éé")
+    with pytest.raises(ValueError):
+      map.to_element()
+
+  def test_incorrect_subst_export(self) -> None:
+    map = Map(unicode="#xF8FF", subst="éé")
+    with pytest.raises(ValueError):
+      map.to_element()
+
   def test_extra_attrib(self) -> None:
     with pytest.raises(TypeError):
       Map(

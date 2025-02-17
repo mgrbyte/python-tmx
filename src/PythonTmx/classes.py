@@ -11,7 +11,7 @@ from warnings import deprecated, warn
 import lxml.etree as lxet
 
 
-def _check_hex_unicode(hex_string):
+def _check_hex_and_unicode(hex_string):
   """
   Internal function that checks if a string is a valid hexadecimal value and if
   it's associated with any Unicode code point.
@@ -430,9 +430,9 @@ class Map:
     ValueError
         If the engine is not recognized.
     """
-    _check_hex_unicode(self.unicode)
+    _check_hex_and_unicode(self.unicode)
     if self.code is not None:
-      _check_hex_unicode(self.code)
+      _check_hex_and_unicode(self.code)
     if self.subst is not None:
       if not isinstance(self.subst, str):
         raise TypeError(f"Expected str for subst but got {type(self.subst)!r}")
@@ -529,7 +529,6 @@ class Ude:
     base = kwargs.get("base", element.attrib.get("base"))
     return Ude(name=name, base=base, maps=maps)
 
-  # test commit
   @tp.overload
   def to_element(
     self, engine: tp.Literal[ENGINE.LXML], add_extra: bool = False, **kwargs
@@ -583,12 +582,11 @@ class Ude:
       _make_xml_attrs(self, add_extra=add_extra, **kwargs),
       engine,
     )
-
-    if len(self.maps):
-      for map_ in self.maps:
-        if not self.base and map_.code:
-          raise ValueError("base must be set if at least one map has a code attribute")
-        elem.append(map_.to_element(engine))  # type: ignore
+    maps = kwargs.pop("maps", self.maps)
+    for map_ in maps:
+      if not self.base and map_.code:
+        raise ValueError("base must be set if at least one map has a code attribute")
+      elem.append(map_.to_element(engine))  # type: ignore
     return elem
 
 
