@@ -1,25 +1,3 @@
-from PythonTmx.classes import (
-  ASSOC,
-  ENGINE,
-  POS,
-  SEGTYPE,
-  Bpt,
-  Ept,
-  Header,
-  Hi,
-  InlineElement,
-  It,
-  Map,
-  Note,
-  Ph,
-  Prop,
-  StructuralElement,
-  Sub,
-  Tmx,
-  TmxElement,
-  Tu,
-  Tuv,
-  Ude,
-  Ut,
-)
-from PythonTmx.utils import from_element, from_file
+# ruff: noqa
+from PythonTmx.classes import *
+from PythonTmx.utils import *
