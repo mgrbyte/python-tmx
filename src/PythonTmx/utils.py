@@ -298,42 +298,6 @@ def _parse_tmx(element: _Element, /, keep_extra: bool = False) -> Tmx:
   )
 
 
-def from_element(element: _Element, /, keep_extra: bool = False) -> TmxElement:
-  match element.tag:
-    case "map":
-      return _parse_map(element, keep_extra=keep_extra)
-    case "ude":
-      return _parse_ude(element, keep_extra=keep_extra)
-    case "note":
-      return _parse_note(element, keep_extra=keep_extra)
-    case "prop":
-      return _parse_prop(element, keep_extra=keep_extra)
-    case "header":
-      return _parse_header(element, keep_extra=keep_extra)
-    case "tuv":
-      return _parse_tuv(element, keep_extra=keep_extra)
-    case "tu":
-      return _parse_tu(element, keep_extra=keep_extra)
-    case "tmx":
-      return _parse_tmx(element, keep_extra=keep_extra)
-    case "bpt":
-      return _parse_bpt(element, keep_extra=keep_extra)
-    case "ept":
-      return _parse_ept(element, keep_extra=keep_extra)
-    case "it":
-      return _parse_it(element, keep_extra=keep_extra)
-    case "ph":
-      return _parse_ph(element, keep_extra=keep_extra)
-    case "hi":
-      return _parse_hi(element, keep_extra=keep_extra)
-    case "ut":
-      return _parse_ut(element, keep_extra=keep_extra)
-    case "sub":
-      return _parse_sub(element, keep_extra=keep_extra)
-    case _:
-      raise ValueError(f"Unknown element {element.tag!r}")
-
-
 def _map_to_element(map_: Map, /, keep_extra: bool = False) -> _Element:
   elem = Element("map")
   elem.attrib.update(_make_attrib_dict(map_, keep_extra=keep_extra))
@@ -459,6 +423,30 @@ def _hi_to_element(hi: Hi, /, keep_extra: bool = False) -> _Element:
 
 
 def to_element(element: TmxElement, /, keep_extra: bool = False) -> _Element:
+  """
+  Converts a TmxElement to an :external:class:`lxml.etree._Element` object.
+
+  If `keep_extra` is True, the extra attributes of the element and its children
+  will be included in the output.
+
+  Parameters
+  ----------
+  element : TmxElement
+      The TmxElement to convert.
+  keep_extra : bool, optional
+      Whether to keep the extra attributes of the element and its children.
+      The default is False.
+
+  Returns
+  -------
+  _Element
+      An :external:class:`lxml.etree._Element` object representing the TmxElement.
+
+  Raises
+  ------
+  TypeError
+      If the element is not a valid TmxElement.
+  """
   match element:
     case Map():
       return _map_to_element(element, keep_extra=keep_extra)
@@ -491,4 +479,64 @@ def to_element(element: TmxElement, /, keep_extra: bool = False) -> _Element:
     case Hi():
       return _hi_to_element(element, keep_extra=keep_extra)
     case _:
-      raise ValueError(f"Unknown element {element}")
+      raise TypeError(f"Unknown element {element}")
+
+
+def from_element(element: _Element, /, keep_extra: bool = False) -> TmxElement:
+  """
+  Converts an :external:class:`lxml.etree._Element` object to a TmxElement.
+
+  If `keep_extra` is True, the extra attributes of the element and its children
+  will be included in the output.
+
+  Parameters
+  ----------
+  element : _Element
+      An :external:class:`lxml.etree._Element` object representing the TmxElement.
+  keep_extra : bool, optional
+      Whether to keep the extra attributes of the element and its children.
+      The default is False.
+
+  Returns
+  -------
+  TmxElement
+      A TmxElement representing the :external:class:`lxml.etree._Element` object.
+
+  Raises
+  ------
+  ValueError
+      If the element is not a valid TmxElement.
+  """
+  match element.tag:
+    case "map":
+      return _parse_map(element, keep_extra=keep_extra)
+    case "ude":
+      return _parse_ude(element, keep_extra=keep_extra)
+    case "note":
+      return _parse_note(element, keep_extra=keep_extra)
+    case "prop":
+      return _parse_prop(element, keep_extra=keep_extra)
+    case "header":
+      return _parse_header(element, keep_extra=keep_extra)
+    case "tuv":
+      return _parse_tuv(element, keep_extra=keep_extra)
+    case "tu":
+      return _parse_tu(element, keep_extra=keep_extra)
+    case "tmx":
+      return _parse_tmx(element, keep_extra=keep_extra)
+    case "bpt":
+      return _parse_bpt(element, keep_extra=keep_extra)
+    case "ept":
+      return _parse_ept(element, keep_extra=keep_extra)
+    case "it":
+      return _parse_it(element, keep_extra=keep_extra)
+    case "ph":
+      return _parse_ph(element, keep_extra=keep_extra)
+    case "hi":
+      return _parse_hi(element, keep_extra=keep_extra)
+    case "ut":
+      return _parse_ut(element, keep_extra=keep_extra)
+    case "sub":
+      return _parse_sub(element, keep_extra=keep_extra)
+    case _:
+      raise ValueError(f"Unknown element {element.tag!r}")

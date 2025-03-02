@@ -4,5 +4,5 @@ PythonTmx package
 Classes
 -------
 
-.. automodule:: PythonTmx.classes
+.. automodule:: PythonTmx.utils
     :members:
