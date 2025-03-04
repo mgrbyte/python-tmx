@@ -60,7 +60,7 @@ def _fill_inline_content(
   parent = None
   for item in content:
     if isinstance(item, InlineElement):
-      parent = to_element(item, keep_extra=keep_extra)
+      parent = to_element(item, keep_extra=keep_extra)  # type:ignore
       element.append(parent)
     else:
       if parent is None:
@@ -346,7 +346,7 @@ def _map_to_element(
   map_: Map, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _map_to_element(
-  map_: Map, /, keep_extra: bool, lxml: bool
+  map_: Map, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   return E("map", attrib=_make_attrib_dict(map_=map_, keep_extra=keep_extra))
@@ -361,11 +361,11 @@ def _ude_to_element(
   ude: Ude, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _ude_to_element(
-  ude: Ude, /, keep_extra: bool, lxml: bool
+  ude: Ude, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("ude", attrib=_make_attrib_dict(ude, keep_extra=keep_extra))
-  elem.extend([to_element(map_, keep_extra=keep_extra, lxml=lxml) for map_ in ude.maps])
+  elem.extend([to_element(map_, keep_extra=keep_extra, lxml=lxml) for map_ in ude.maps])  # type:ignore
   return elem
 
 
@@ -378,7 +378,7 @@ def _note_to_element(
   note: Note, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _note_to_element(
-  note: Note, /, keep_extra: bool, lxml: bool
+  note: Note, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("note", _make_attrib_dict(note, keep_extra=keep_extra))
@@ -395,7 +395,7 @@ def _prop_to_element(
   prop: Prop, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _prop_to_element(
-  prop: Prop, /, keep_extra: bool, lxml: bool
+  prop: Prop, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("prop", _make_attrib_dict(prop, keep_extra=keep_extra))
@@ -412,13 +412,13 @@ def _header_to_element(
   header: Header, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _header_to_element(
-  header: Header, /, keep_extra: bool, lxml: bool
+  header: Header, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("header", _make_attrib_dict(header, keep_extra=keep_extra))
   elem.extend(
     [
-      to_element(item, keep_extra=keep_extra, lxml=lxml)
+      to_element(item, keep_extra=keep_extra, lxml=lxml)  # type:ignore
       for item in chain(header.notes, header.props, header.udes)
     ]
   )
@@ -434,15 +434,15 @@ def _tuv_to_element(
   tuv: Tuv, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _tuv_to_element(
-  tuv: Tuv, /, keep_extra: bool, lxml: bool
+  tuv: Tuv, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("tuv", attrib=_make_attrib_dict(tuv, keep_extra=keep_extra))
   elem.extend(
-    [to_element(item, keep_extra=keep_extra) for item in chain(tuv.notes, tuv.props)]
+    [to_element(item, keep_extra=keep_extra) for item in chain(tuv.notes, tuv.props)]  # type:ignore
   )
   seg = E("seg")
-  elem.append(seg)
+  elem.append(seg)  # type:ignore
   _fill_inline_content(tuv.content, seg, keep_extra=keep_extra)
   return elem
 
@@ -456,13 +456,13 @@ def _tu_to_element(
   tu: Tu, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _tu_to_element(
-  tu: Tu, /, keep_extra: bool, lxml: bool
+  tu: Tu, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("tu", attrib=_make_attrib_dict(tu, keep_extra=keep_extra))
   elem.extend(
     [
-      to_element(item, keep_extra=keep_extra)
+      to_element(item, keep_extra=keep_extra)  # type:ignore
       for item in chain(tu.notes, tu.props, tu.tuvs)
     ]
   )
@@ -478,14 +478,14 @@ def _tmx_to_element(
   tmx: Tmx, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _tmx_to_element(
-  tmx: Tmx, /, keep_extra: bool, lxml: bool
+  tmx: Tmx, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("tmx", version="1.4")
-  elem.append(_header_to_element(tmx.header, keep_extra=keep_extra))
+  elem.append(_header_to_element(tmx.header, keep_extra=keep_extra, lxml=lxml))  # type: ignore
   body = E("body")
   elem.append(body)  # type: ignore
-  body.extend([to_element(item, keep_extra=keep_extra) for item in tmx.tus])
+  body.extend([to_element(item, keep_extra=keep_extra, lxml=lxml) for item in tmx.tus])  # type: ignore
   return elem
 
 
@@ -498,7 +498,7 @@ def _ph_to_element(
   ph: Ph, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _ph_to_element(
-  ph: Ph, /, keep_extra: bool, lxml: bool
+  ph: Ph, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("ph", attrib=_make_attrib_dict(ph, keep_extra=keep_extra))
@@ -515,7 +515,7 @@ def _bpt_to_element(
   bpt: Bpt, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _bpt_to_element(
-  bpt: Bpt, /, keep_extra: bool, lxml: bool
+  bpt: Bpt, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("bpt", attrib=_make_attrib_dict(bpt, keep_extra=keep_extra))
@@ -532,7 +532,7 @@ def _ept_to_element(
   ept: Ept, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _ept_to_element(
-  ept: Ept, /, keep_extra: bool, lxml: bool
+  ept: Ept, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("ept", attrib=_make_attrib_dict(ept, keep_extra=keep_extra))
@@ -549,7 +549,7 @@ def _it_to_element(
   it: It, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _it_to_element(
-  it: It, /, keep_extra: bool, lxml: bool
+  it: It, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("it", attrib=_make_attrib_dict(it, keep_extra=keep_extra))
@@ -566,7 +566,7 @@ def _ut_to_element(
   ut: Ut, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _ut_to_element(
-  ut: Ut, /, keep_extra: bool, lxml: bool
+  ut: Ut, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("ut", attrib=_make_attrib_dict(ut, keep_extra=keep_extra))
@@ -583,7 +583,7 @@ def _sub_to_element(
   sub: Sub, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _sub_to_element(
-  sub: Sub, /, keep_extra: bool, lxml: bool
+  sub: Sub, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("sub", attrib=_make_attrib_dict(sub, keep_extra=keep_extra))
@@ -600,7 +600,7 @@ def _hi_to_element(
   hi: Hi, /, keep_extra: bool, lxml: Literal[False]
 ) -> pyet.Element: ...
 def _hi_to_element(
-  hi: Hi, /, keep_extra: bool, lxml: bool
+  hi: Hi, /, keep_extra: bool, lxml: Literal[True] | Literal[False]
 ) -> lxet._Element | pyet.Element:
   E = lxet.Element if lxml else pyet.Element
   elem = E("hi", attrib=_make_attrib_dict(hi, keep_extra=keep_extra))
@@ -626,7 +626,7 @@ def to_element(
 ) -> pyet.Element: ...
 def to_element(
   element: TmxElement,
-  lxml: bool,
+  lxml: Literal[True] | Literal[False],
   /,
   keep_extra: bool = False,
   validate_element: bool = True,
