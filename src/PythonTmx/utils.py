@@ -1,7 +1,9 @@
 import itertools
-from collections.abc import MutableSequence
+from collections.abc import Iterable
 from dataclasses import MISSING, fields
 from datetime import datetime
+from functools import cache
+from typing import Any, Type, get_type_hints
 
 from lxml.etree import Element, _Element
 
@@ -43,18 +45,14 @@ def _make_attrib_dict(map_: TmxElement, keep_extra: bool) -> dict[str, str]:
       getattr(map_, attr.name),
       attr.metadata.get("export_func", str),
     )
-    if value is None:
-      if attr.default is MISSING:
-        raise ValueError(f"missing attribute {attr.name}")
-    else:
-      attrib_dict[name] = func(value) if func else value
+    attrib_dict[name] = func(value)
   if keep_extra:
     attrib_dict.update(**map_.extra)
   return attrib_dict
 
 
 def _fill_inline_content(
-  content: MutableSequence, /, element: _Element, keep_extra: bool
+  content: Iterable, /, element: _Element, keep_extra: bool
 ) -> None:
   parent = None
   for item in content:
@@ -74,8 +72,8 @@ def _fill_inline_content(
           parent.tail += item
 
 
-def _parse_inline_content(element: _Element, /, keep_extra: bool) -> MutableSequence:
-  content: MutableSequence = []
+def _parse_inline_content(element: _Element, /, keep_extra: bool) -> list:
+  content: list = []
   if element.text is not None:
     content.append(element.text)
   for child in element:
@@ -102,52 +100,73 @@ def _parse_inline_content(element: _Element, /, keep_extra: bool) -> MutableSequ
 
 
 def _parse_bpt(element: _Element, /, keep_extra: bool) -> Bpt:
-  return Bpt(
+  bpt = Bpt(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     i=int(element.attrib.pop("i")),
-    x=element.attrib.pop("x", None),
     type=element.attrib.pop("type", None),
   )
+  if (x := element.attrib.pop("x", None)) is not None:
+    bpt.x = int(x)
+  if keep_extra:
+    bpt.extra = dict(element.attrib)
+  return bpt
 
 
 def _parse_ept(element: _Element, /, keep_extra: bool) -> Ept:
   return Ept(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     i=int(element.attrib.pop("i")),
+    extra=dict(element.attrib) if keep_extra else {},
   )
 
 
 def _parse_it(element: _Element, /, keep_extra: bool) -> It:
-  return It(
+  it = It(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     pos=POS(element.attrib.pop("pos")),
-    x=element.attrib.pop("x", None),
     type=element.attrib.pop("type", None),
   )
+  if (x := element.attrib.pop("x", None)) is not None:
+    it.x = int(x)
+  if keep_extra:
+    it.extra = dict(element.attrib)
+  return it
 
 
 def _parse_ph(element: _Element, /, keep_extra: bool) -> Ph:
-  return Ph(
+  ph = Ph(
     content=_parse_inline_content(element, keep_extra=keep_extra),
-    x=element.attrib.pop("x", None),
     assoc=ASSOC(element.attrib.pop("assoc", None)),
     type=element.attrib.pop("type", None),
   )
+  if (x := element.attrib.pop("x", None)) is not None:
+    ph.x = int(x)
+  if keep_extra:
+    ph.extra = dict(element.attrib)
+  return ph
 
 
 def _parse_hi(element: _Element, /, keep_extra: bool) -> Hi:
-  return Hi(
+  hi = Hi(
     content=_parse_inline_content(element, keep_extra=keep_extra),
-    x=element.attrib.pop("x", None),
     type=element.attrib.pop("type", None),
   )
+  if (x := element.attrib.pop("x", None)) is not None:
+    hi.x = int(x)
+  if keep_extra:
+    hi.extra = dict(element.attrib)
+  return hi
 
 
 def _parse_ut(element: _Element, /, keep_extra: bool) -> Ut:
-  return Ut(
+  ut = Ut(
     content=_parse_inline_content(element, keep_extra=keep_extra),
-    x=element.attrib.pop("x", None),
   )
+  if (x := element.attrib.pop("x", None)) is not None:
+    ut.x = int(x)
+  if keep_extra:
+    ut.extra = dict(element.attrib)
+  return ut
 
 
 def _parse_sub(element: _Element, /, keep_extra: bool) -> Sub:
@@ -155,6 +174,7 @@ def _parse_sub(element: _Element, /, keep_extra: bool) -> Sub:
     content=_parse_inline_content(element, keep_extra=keep_extra),
     datatype=element.attrib.pop("datatype", None),
     type=element.attrib.pop("type", None),
+    extra=dict(element.attrib) if keep_extra else {},
   )
 
 
@@ -422,12 +442,17 @@ def _hi_to_element(hi: Hi, /, keep_extra: bool = False) -> _Element:
   return elem
 
 
-def to_element(element: TmxElement, /, keep_extra: bool = False) -> _Element:
+def to_element(
+  element: TmxElement, /, keep_extra: bool = False, validate_element: bool = True
+) -> _Element:
   """
   Converts a TmxElement to an :external:class:`lxml.etree._Element` object.
 
   If `keep_extra` is True, the extra attributes of the element and its children
   will be included in the output.
+
+  if `validate_element` is True, the element will be validated before being converted.
+
 
   Parameters
   ----------
@@ -436,6 +461,8 @@ def to_element(element: TmxElement, /, keep_extra: bool = False) -> _Element:
   keep_extra : bool, optional
       Whether to keep the extra attributes of the element and its children.
       The default is False.
+  validate_element : bool, optional
+      Whether to validate the element before converting it. The default is True.
 
   Returns
   -------
@@ -447,6 +474,8 @@ def to_element(element: TmxElement, /, keep_extra: bool = False) -> _Element:
   TypeError
       If the element is not a valid TmxElement.
   """
+  if validate_element:
+    validate(element)
   match element:
     case Map():
       return _map_to_element(element, keep_extra=keep_extra)
@@ -540,3 +569,66 @@ def from_element(element: _Element, /, keep_extra: bool = False) -> TmxElement:
       return _parse_sub(element, keep_extra=keep_extra)
     case _:
       raise ValueError(f"Unknown element {element.tag!r}")
+
+
+def _check_hex_and_unicode_codepoint(string: str) -> None:
+  if not isinstance(string, str):
+    raise TypeError(f"Expected str, not {type(string)}")
+  if not string.startswith("#x"):
+    raise ValueError(f"string should start with '#x' but found {string[:2]!r}")
+  try:
+    code_point = int(string[2:], 16)
+  except ValueError:
+    raise ValueError(f"Invalid hexadecimal string {string!r}")
+  try:
+    chr(code_point)
+  except ValueError:
+    raise ValueError(f"Invalid Unicode code point {code_point!r}")
+
+
+def _validate_map(map_: Map) -> None:
+  _check_hex_and_unicode_codepoint(map_.unicode)
+  if map_.code is not None:
+    _check_hex_and_unicode_codepoint(map_.code)
+  if map_.ent is not None:
+    if not map_.ent.isascii():
+      raise ValueError(f"ent should be ASCII but found {map_.ent!r}")
+  if map_.subst is not None:
+    if not map_.subst.isascii():
+      raise ValueError(f"subst should be ASCII but found {map_.subst!r}")
+
+
+@cache
+def get_cached_type_hints(clazz: Type[Any]) -> dict[str, Type[Any]]:
+  return get_type_hints(clazz)
+
+
+def validate(obj: TmxElement) -> None:
+  """
+  Validates that the TmxElement is valid and ready for export.
+  """
+  if not isinstance(obj, TmxElement):
+    raise TypeError(f"Expected a TmxElement but got {type(obj)}")
+  for field in fields(obj):
+    # Ignore extra as these don't follow the spec so users should be the ones
+    # validating them
+    if field.name == "extra":
+      continue
+    value, hints = getattr(obj, field.name), get_cached_type_hints(obj.__class__)  # type: ignore
+    if value is None:
+      if field.default is MISSING:
+        raise ValueError(f"missing attribute {field.name}")
+      else:
+        continue
+    else:
+      try:
+        if not isinstance(value, hints[field.name]):
+          raise TypeError(f"Expected {hints[field.name]} but got {type(value)}")
+      except TypeError:
+        for item in value:
+          if not isinstance(item, hints[field.name].__args__):
+            raise TypeError(
+              f"Expected one of {hints[field.name].__args__} but got {type(item)}"
+            )
+  if isinstance(obj, Map):
+    _validate_map(obj)

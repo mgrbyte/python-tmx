@@ -1,10 +1,10 @@
-.. toctree:: PythonTmx.classes
-   :maxdepth: 4
+.. toctree::
    :hidden:
 
-.. toctree:: PythonTmx.utils
-   :maxdepth: 4
-   :hidden:
+   Classes <PythonTmx.classes>
+   Utils <PythonTmx.utils>
+   Intro <PythonTmx.Intro>
+
 
 PythonTmx
 =========
@@ -42,6 +42,7 @@ Usage
 Here is a basic example of how to use PythonTmx to load and read a TMX file:
 
 .. code-block:: python
+
       from datetime import UTC, datetime
 
       import lxml.etree as etree
@@ -102,25 +103,12 @@ Here is a basic example of how to use PythonTmx to load and read a TMX file:
       "path/to/translation_memory.tmx", encoding="utf-8", xml_declaration=True
       )
 
-
-
-For more detailed usage and examples, please refer to the documentation.
-
-Documentation
+API Reference
 -------------
-
-The full documentation for PythonTmx is available at the following link:
-
-`PythonTmx Documentation <https://github.com/ChonkyYoshi/python-tmx>`_
+- `Classes <PythonTmx.classes>`_
+- `Utils <PythonTmx.utils>`_
 
 License
 -------
 
-PythonTmx is licensed under the MIT License. See the LICENSE file for more details.
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+PythonTmx is licensed under the MIT License. See the `LICENSE <https://github.com/EnzoAgosta/python-tmx/blob/main/LICENSE>`_ file for more details.

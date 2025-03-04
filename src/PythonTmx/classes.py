@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from functools import partial
-from typing import Any, MutableSequence, Optional
+from typing import Iterable, Optional
 
 __all__ = [
   "TmxElement",
@@ -106,7 +106,7 @@ class InlineElement(TmxElement):
   Base class for all inline elements in a TMX file.
   """
 
-  content: Any
+  content: Iterable
 
 
 @dataclass(unsafe_hash=True, kw_only=True, slots=True)
@@ -125,9 +125,7 @@ class Bpt(InlineElement):
   inside of a :class:`Tuv` must have a corresponding :class:`Ept`.
   """
 
-  content: MutableSequence[str | Sub] = field(
-    default_factory=list, metadata={"exclude": True}
-  )
+  content: Iterable[str | Sub] = field(default_factory=list, metadata={"exclude": True})
   """
   The content of the :class:`Bpt`.
   """
@@ -156,9 +154,7 @@ class Ept(InlineElement):
   a :class:`Tuv` must have a corresponding :class:`Bpt`.
   """
 
-  content: MutableSequence[str | Sub] = field(
-    default_factory=list, metadata={"exclude": True}
-  )
+  content: Iterable[str | Sub] = field(default_factory=list, metadata={"exclude": True})
   """
   The content of the :class:`Ept`.
   """
@@ -176,7 +172,7 @@ class Sub(InlineElement):
   a <img /> tag.
   """
 
-  content: MutableSequence[str | Bpt | Ept | It | Ph | Hi | Ut] = field(
+  content: Iterable[str | Bpt | Ept | It | Ph | Hi | Ut] = field(
     default_factory=list, metadata={"exclude": True}
   )
   """
@@ -199,9 +195,7 @@ class It(InlineElement):
   corresponding ending/beginning within the segment.
   """
 
-  content: MutableSequence[str | Sub] = field(
-    default_factory=list, metadata={"exclude": True}
-  )
+  content: Iterable[str | Sub] = field(default_factory=list, metadata={"exclude": True})
   """
   The content of the :class:`It`.
   """
@@ -229,9 +223,7 @@ class Ph(InlineElement):
   *Placeholder* - Delimits a sequence of native standalone codes in the segment.
   """
 
-  content: MutableSequence[str | Sub] = field(
-    default_factory=list, metadata={"exclude": True}
-  )
+  content: Iterable[str | Sub] = field(default_factory=list, metadata={"exclude": True})
   """
   The content of the :class:`Ph`.
   """
@@ -261,7 +253,7 @@ class Hi(InlineElement):
   *Highlight* - Delimits a section of text that has special meaning.
   """
 
-  content: MutableSequence[str | Bpt | Ept | It | Ph | Hi | Ut] = field(
+  content: Iterable[str | Bpt | Ept | It | Ph | Hi | Ut] = field(
     default_factory=list, metadata={"exclude": True}
   )
   """
@@ -290,9 +282,7 @@ class Ut(InlineElement):
     versions of TMX, but it is not recommended for new TMX files.
   """
 
-  content: MutableSequence[str | Sub] = field(
-    default_factory=list, metadata={"exclude": True}
-  )
+  content: Iterable[str | Sub] = field(default_factory=list, metadata={"exclude": True})
   """
   The content of the :class:`Ut`.
   """
@@ -354,9 +344,9 @@ class Ude(StructuralElement):
     If at least one :class:`Map` element has a :attr:`code` attribute, the
     :attr:`base` attribute is required.
   """
-  maps: MutableSequence[Map] = field(default_factory=list, metadata={"exclude": True})
+  maps: Iterable[Map] = field(default_factory=list, metadata={"exclude": True})
   """
-  A MutableSequence of :class:`Map` elements. By default an empty list.
+  A Iterable of :class:`Map` elements. By default an empty list.
   """
 
 
@@ -508,17 +498,17 @@ class Header(StructuralElement):
   """
   *Change ID* - The ID of the user who last edited the tmx file. Optional, by default None.
   """
-  notes: MutableSequence[Note] = field(default_factory=list, metadata={"exclude": True})
+  notes: Iterable[Note] = field(default_factory=list, metadata={"exclude": True})
   """
   *Notes* - Used to provide information about the parent element.
   Optional, by default an empty list.
   """
-  props: MutableSequence[Prop] = field(default_factory=list, metadata={"exclude": True})
+  props: Iterable[Prop] = field(default_factory=list, metadata={"exclude": True})
   """
   *Properties* - Used to provide information about specific properties of the parent
   element. Optional, by default an empty list.
   """
-  udes: MutableSequence[Ude] = field(default_factory=list, metadata={"exclude": True})
+  udes: Iterable[Ude] = field(default_factory=list, metadata={"exclude": True})
   """
   *User-Defined encoding* - Used to define a user-defined encoding.
   Optional, by default an empty list.
@@ -531,7 +521,7 @@ class Tuv(StructuralElement):
   *Translation Unit Variant* - Contains the actual segments of the translation unit.
   """
 
-  content: MutableSequence[str | Bpt | Ept | Ph | It | Hi | Ut] = field(
+  content: Iterable[str | Bpt | Ept | Ph | It | Hi | Ut] = field(
     default_factory=list, metadata={"exclude": True}
   )
   """
@@ -615,12 +605,12 @@ class Tuv(StructuralElement):
   """
   *Change ID* - The ID of the user who last edited the :class:`Tuv`. Optional, by default None.
   """
-  props: MutableSequence[Prop] = field(default_factory=list, metadata={"exclude": True})
+  props: Iterable[Prop] = field(default_factory=list, metadata={"exclude": True})
   """
   *Properties* - Used to provide information about specific properties of the parent
   element. Optional, by default an empty list.
   """
-  notes: MutableSequence[Note] = field(default_factory=list, metadata={"exclude": True})
+  notes: Iterable[Note] = field(default_factory=list, metadata={"exclude": True})
   """
   *Notes* - Used to provide information about the parent element.
   Optional, by default an empty list.
@@ -731,17 +721,17 @@ class Tu(StructuralElement):
     If any of the :class:`Tuv` elements in the :class:`Tu` can be considered
     the source language, value can be set to \*all\*.
   """
-  notes: MutableSequence[Note] = field(default_factory=list, metadata={"exclude": True})
+  notes: Iterable[Note] = field(default_factory=list, metadata={"exclude": True})
   """
   *Notes* - Used to provide information about the parent element.
   Optional, by default an empty list.
   """
-  props: MutableSequence[Prop] = field(default_factory=list, metadata={"exclude": True})
+  props: Iterable[Prop] = field(default_factory=list, metadata={"exclude": True})
   """
   *Properties* - Used to provide information about specific properties of the parent
   element. Optional, by default an empty list.
   """
-  tuvs: MutableSequence[Tuv] = field(default_factory=list, metadata={"exclude": True})
+  tuvs: Iterable[Tuv] = field(default_factory=list, metadata={"exclude": True})
   """
   *Translation Unit Variants* - Contains the :class:`Tuv` elements for the source
   and target languages.
@@ -758,7 +748,7 @@ class Tmx(StructuralElement):
   """
   *Header* - Contains information about the :class:`Tmx` file itself.
   """
-  tus: MutableSequence[Tu] = field(default_factory=list, metadata={"exclude": True})
+  tus: Iterable[Tu] = field(default_factory=list, metadata={"exclude": True})
   """
   *Translation Units* - Contains the :class:`Tu` elements.
   """
