@@ -59,3 +59,27 @@ Structural Elements
 .. autoclass:: Ude
    :members:
    :member-order: bysource
+
+.. autoclass:: Note
+   :members:
+   :member-order: bysource
+
+.. autoclass:: Prop
+   :members:
+   :member-order: bysource
+
+.. autoclass:: Header
+   :members:
+   :member-order: bysource
+
+.. autoclass:: Tuv
+   :members:
+   :member-order: bysource
+
+.. autoclass:: Tu
+   :members:
+   :member-order: bysource
+
+.. autoclass:: Tmx
+   :members:
+   :member-order: bysource
