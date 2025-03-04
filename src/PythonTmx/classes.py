@@ -136,7 +136,7 @@ class Bpt(InlineElement):
   *Internal matching* - Used to pair :class:`Bpt` elements with their corresponding
   :class:`Ept` elements. Must be unique within a :class:`Tuv`. Required.
   """
-  x: Optional[str] = field(default=None)
+  x: Optional[int] = field(default=None)
   """
   *External matching* - Used to match inline elements between each :class:`Tuv`
   inside a :class:`Tu`. Note that an :class:`Ept` element is matched based on the
@@ -210,7 +210,7 @@ class It(InlineElement):
   *Position* - Indicates whether an isolated tag :class:`It` is a beginning or
   and ending tag. Required.
   """
-  x: Optional[str] = field(default=None)
+  x: Optional[int] = field(default=None)
   """
   *External matching* - Used to match inline elements between each :class:`Tuv`
   inside a :class:`Tu`. Note that an :class:`It` element is matched based on the
@@ -235,7 +235,7 @@ class Ph(InlineElement):
   """
   The content of the :class:`Ph`.
   """
-  x: Optional[str] = field(default=None)
+  x: Optional[int] = field(default=None)
   """
   *External matching* - Used to match inline elements between each :class:`Tuv`
   inside a :class:`Tu`. Note that a :class:`Ph` element is matched based on the
@@ -267,7 +267,7 @@ class Hi(InlineElement):
   """
   The content of the :class:`Hi`.
   """
-  x: Optional[str] = field(default=None)
+  x: Optional[int] = field(default=None)
   """
   *External matching* - Used to match inline elements between each :class:`Tuv`
   inside a :class:`Tu`. Note that a :class:`Hi` element is matched based on the
@@ -296,7 +296,7 @@ class Ut(InlineElement):
   """
   The content of the :class:`Ut`.
   """
-  x: Optional[str] = field(default=None)
+  x: Optional[int] = field(default=None)
   """
   *External matching* - Used to match inline elements between each :class:`Tuv`
   inside a :class:`Tu`. Note that an :class:`Ut` element is matched based on the
