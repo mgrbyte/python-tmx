@@ -3,7 +3,6 @@
 
    Classes <PythonTmx.classes>
    Utils <PythonTmx.utils>
-   Intro <PythonTmx.Intro>
 
 
 PythonTmx
@@ -27,6 +26,12 @@ Features
 - **Fully Typed**: PythonTmx is fully typed, providing type hints and type checking for all attributes and methods.
 - **Fully Tmx 1.4 level 2 support**: PythonTmx supports all the elements and attributes of TMX 1.4 level 2, letting you build and parse even the most complex files
 
+.. note::
+   While PythonTmx is built on top of and is typed for use with lxml, the
+   :func:`~PythonTmx.utils.from_element` function is compatible with ElementTree
+   objects as well. However, it is at this time not possible to export to
+   ElementTree objects.
+
 Installation
 ------------
 
@@ -39,7 +44,7 @@ You can install PythonTmx using pip:
 Usage
 -----
 
-Here is a basic example of how to use PythonTmx to load and read a TMX file:
+Here is a basic example of how to use PythonTmx.
 
 .. code-block:: python
 

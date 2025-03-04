@@ -1,11 +1,13 @@
-import itertools
+import xml.etree.ElementTree as pyet
+from collections import Counter
 from collections.abc import Iterable
 from dataclasses import MISSING, fields
 from datetime import datetime
 from functools import cache
-from typing import Any, Type, get_type_hints
+from itertools import chain
+from typing import Any, Literal, Type, get_type_hints, overload
 
-from lxml.etree import Element, _Element
+import lxml.etree as lxet
 
 from PythonTmx.classes import (
   ASSOC,
@@ -45,14 +47,15 @@ def _make_attrib_dict(map_: TmxElement, keep_extra: bool) -> dict[str, str]:
       getattr(map_, attr.name),
       attr.metadata.get("export_func", str),
     )
-    attrib_dict[name] = func(value)
+    if value is not None:
+      attrib_dict[name] = func(value)
   if keep_extra:
     attrib_dict.update(**map_.extra)
   return attrib_dict
 
 
 def _fill_inline_content(
-  content: Iterable, /, element: _Element, keep_extra: bool
+  content: Iterable, /, element: lxet._Element | pyet.Element, keep_extra: bool
 ) -> None:
   parent = None
   for item in content:
@@ -72,7 +75,9 @@ def _fill_inline_content(
           parent.tail += item
 
 
-def _parse_inline_content(element: _Element, /, keep_extra: bool) -> list:
+def _parse_inline_content(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool
+) -> list:
   content: list = []
   if element.text is not None:
     content.append(element.text)
@@ -99,7 +104,7 @@ def _parse_inline_content(element: _Element, /, keep_extra: bool) -> list:
   return content
 
 
-def _parse_bpt(element: _Element, /, keep_extra: bool) -> Bpt:
+def _parse_bpt(element: lxet._Element | pyet.Element, /, keep_extra: bool) -> Bpt:
   bpt = Bpt(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     i=int(element.attrib.pop("i")),
@@ -112,7 +117,7 @@ def _parse_bpt(element: _Element, /, keep_extra: bool) -> Bpt:
   return bpt
 
 
-def _parse_ept(element: _Element, /, keep_extra: bool) -> Ept:
+def _parse_ept(element: lxet._Element | pyet.Element, /, keep_extra: bool) -> Ept:
   return Ept(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     i=int(element.attrib.pop("i")),
@@ -120,7 +125,7 @@ def _parse_ept(element: _Element, /, keep_extra: bool) -> Ept:
   )
 
 
-def _parse_it(element: _Element, /, keep_extra: bool) -> It:
+def _parse_it(element: lxet._Element | pyet.Element, /, keep_extra: bool) -> It:
   it = It(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     pos=POS(element.attrib.pop("pos")),
@@ -133,7 +138,7 @@ def _parse_it(element: _Element, /, keep_extra: bool) -> It:
   return it
 
 
-def _parse_ph(element: _Element, /, keep_extra: bool) -> Ph:
+def _parse_ph(element: lxet._Element | pyet.Element, /, keep_extra: bool) -> Ph:
   ph = Ph(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     assoc=ASSOC(element.attrib.pop("assoc", None)),
@@ -146,7 +151,7 @@ def _parse_ph(element: _Element, /, keep_extra: bool) -> Ph:
   return ph
 
 
-def _parse_hi(element: _Element, /, keep_extra: bool) -> Hi:
+def _parse_hi(element: lxet._Element | pyet.Element, /, keep_extra: bool) -> Hi:
   hi = Hi(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     type=element.attrib.pop("type", None),
@@ -158,7 +163,7 @@ def _parse_hi(element: _Element, /, keep_extra: bool) -> Hi:
   return hi
 
 
-def _parse_ut(element: _Element, /, keep_extra: bool) -> Ut:
+def _parse_ut(element: lxet._Element | pyet.Element, /, keep_extra: bool) -> Ut:
   ut = Ut(
     content=_parse_inline_content(element, keep_extra=keep_extra),
   )
@@ -169,7 +174,7 @@ def _parse_ut(element: _Element, /, keep_extra: bool) -> Ut:
   return ut
 
 
-def _parse_sub(element: _Element, /, keep_extra: bool) -> Sub:
+def _parse_sub(element: lxet._Element | pyet.Element, /, keep_extra: bool) -> Sub:
   return Sub(
     content=_parse_inline_content(element, keep_extra=keep_extra),
     datatype=element.attrib.pop("datatype", None),
@@ -178,7 +183,9 @@ def _parse_sub(element: _Element, /, keep_extra: bool) -> Sub:
   )
 
 
-def _parse_map(element: _Element, /, keep_extra: bool = False) -> Map:
+def _parse_map(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool = False
+) -> Map:
   return Map(
     unicode=element.attrib.pop("unicode"),
     code=element.attrib.pop("code", None),
@@ -188,7 +195,9 @@ def _parse_map(element: _Element, /, keep_extra: bool = False) -> Map:
   )
 
 
-def _parse_ude(element: _Element, /, keep_extra: bool = False) -> Ude:
+def _parse_ude(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool = False
+) -> Ude:
   ude = Ude(
     name=element.attrib.pop("name"),
     base=element.attrib.get("base", None),
@@ -198,7 +207,9 @@ def _parse_ude(element: _Element, /, keep_extra: bool = False) -> Ude:
   return ude
 
 
-def _parse_note(element: _Element, /, keep_extra: bool = False) -> Note:
+def _parse_note(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool = False
+) -> Note:
   return Note(
     # Intentionally passing .text as is to let dataclasses handle the type error
     text=element.text,  # type: ignore
@@ -208,7 +219,9 @@ def _parse_note(element: _Element, /, keep_extra: bool = False) -> Note:
   )
 
 
-def _parse_prop(element: _Element, /, keep_extra: bool = False) -> Prop:
+def _parse_prop(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool = False
+) -> Prop:
   return Prop(
     # Intentionally passing .text as is to let dataclasses handle the type error
     text=element.text,  # type: ignore
@@ -219,7 +232,9 @@ def _parse_prop(element: _Element, /, keep_extra: bool = False) -> Prop:
   )
 
 
-def _parse_header(element: _Element, /, keep_extra: bool = False) -> Header:
+def _parse_header(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool = False
+) -> Header:
   header = Header(
     creationtool=element.attrib.pop("creationtool"),
     creationtoolversion=element.attrib.pop("creationtoolversion"),
@@ -244,7 +259,9 @@ def _parse_header(element: _Element, /, keep_extra: bool = False) -> Header:
   return header
 
 
-def _parse_tuv(element: _Element, /, keep_extra: bool = False) -> Tuv:
+def _parse_tuv(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool = False
+) -> Tuv:
   tuv = Tuv(
     lang=element.attrib.pop(f"{xml}lang"),
     encoding=element.attrib.pop("o-encoding", None),
@@ -276,7 +293,7 @@ def _parse_tuv(element: _Element, /, keep_extra: bool = False) -> Tuv:
   return tuv
 
 
-def _parse_tu(element: _Element, /, keep_extra: bool = False) -> Tu:
+def _parse_tu(element: lxet._Element | pyet.Element, /, keep_extra: bool = False) -> Tu:
   tu = Tu(
     tuid=element.attrib.pop("tuid", None),
     encoding=element.attrib.pop("o-encoding", None),
@@ -310,7 +327,9 @@ def _parse_tu(element: _Element, /, keep_extra: bool = False) -> Tu:
   return tu
 
 
-def _parse_tmx(element: _Element, /, keep_extra: bool = False) -> Tmx:
+def _parse_tmx(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool = False
+) -> Tmx:
   return Tmx(
     header=_parse_header(element.find("header"), keep_extra=keep_extra),  # type: ignore
     tus=[_parse_tu(child, keep_extra=keep_extra) for child in element.iter("tu")],
@@ -318,133 +337,300 @@ def _parse_tmx(element: _Element, /, keep_extra: bool = False) -> Tmx:
   )
 
 
-def _map_to_element(map_: Map, /, keep_extra: bool = False) -> _Element:
-  elem = Element("map")
-  elem.attrib.update(_make_attrib_dict(map_, keep_extra=keep_extra))
+@overload
+def _map_to_element(
+  map_: Map, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _map_to_element(
+  map_: Map, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _map_to_element(
+  map_: Map, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  return E("map", attrib=_make_attrib_dict(map_=map_, keep_extra=keep_extra))
+
+
+@overload
+def _ude_to_element(
+  ude: Ude, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _ude_to_element(
+  ude: Ude, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _ude_to_element(
+  ude: Ude, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("ude", attrib=_make_attrib_dict(ude, keep_extra=keep_extra))
+  elem.extend([to_element(map_, keep_extra=keep_extra, lxml=lxml) for map_ in ude.maps])
   return elem
 
 
-def _ude_to_element(ude: Ude, /, keep_extra: bool = False) -> _Element:
-  elem = Element("ude")
-  elem.attrib.update(_make_attrib_dict(ude, keep_extra=keep_extra))
-  elem.extend([_map_to_element(map_, keep_extra=keep_extra) for map_ in ude.maps])
-  return elem
-
-
-def _note_to_element(note: Note, /, keep_extra: bool = False) -> _Element:
-  elem = Element("note")
+@overload
+def _note_to_element(
+  note: Note, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _note_to_element(
+  note: Note, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _note_to_element(
+  note: Note, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("note", _make_attrib_dict(note, keep_extra=keep_extra))
   elem.text = note.text
-  elem.attrib.update(_make_attrib_dict(note, keep_extra=keep_extra))
   return elem
 
 
-def _prop_to_element(prop: Prop, /, keep_extra: bool = False) -> _Element:
-  elem = Element("prop")
+@overload
+def _prop_to_element(
+  prop: Prop, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _prop_to_element(
+  prop: Prop, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _prop_to_element(
+  prop: Prop, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("prop", _make_attrib_dict(prop, keep_extra=keep_extra))
   elem.text = prop.text
-  elem.attrib.update(_make_attrib_dict(prop, keep_extra=keep_extra))
   return elem
 
 
-def _header_to_element(header: Header, /, keep_extra: bool = False) -> _Element:
-  elem = Element("header")
-  elem.attrib.update(_make_attrib_dict(header, keep_extra=keep_extra))
+@overload
+def _header_to_element(
+  header: Header, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _header_to_element(
+  header: Header, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _header_to_element(
+  header: Header, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("header", _make_attrib_dict(header, keep_extra=keep_extra))
   elem.extend(
     [
-      to_element(item, keep_extra=keep_extra)
-      for item in itertools.chain(header.notes, header.props, header.udes)
+      to_element(item, keep_extra=keep_extra, lxml=lxml)
+      for item in chain(header.notes, header.props, header.udes)
     ]
   )
   return elem
 
 
-def _tuv_to_element(tuv: Tuv, /, keep_extra: bool = False) -> _Element:
-  elem = Element("tuv")
-  elem.attrib.update(_make_attrib_dict(tuv, keep_extra=keep_extra))
+@overload
+def _tuv_to_element(
+  tuv: Tuv, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _tuv_to_element(
+  tuv: Tuv, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _tuv_to_element(
+  tuv: Tuv, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("tuv", attrib=_make_attrib_dict(tuv, keep_extra=keep_extra))
   elem.extend(
-    [
-      to_element(item, keep_extra=keep_extra)
-      for item in itertools.chain(tuv.notes, tuv.props)
-    ]
+    [to_element(item, keep_extra=keep_extra) for item in chain(tuv.notes, tuv.props)]
   )
-  seg = Element("seg")
+  seg = E("seg")
   elem.append(seg)
   _fill_inline_content(tuv.content, seg, keep_extra=keep_extra)
   return elem
 
 
-def _tu_to_element(tu: Tu, /, keep_extra: bool = False) -> _Element:
-  elem = Element("tu")
-  elem.attrib.update(_make_attrib_dict(tu, keep_extra=keep_extra))
+@overload
+def _tu_to_element(
+  tu: Tu, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _tu_to_element(
+  tu: Tu, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _tu_to_element(
+  tu: Tu, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("tu", attrib=_make_attrib_dict(tu, keep_extra=keep_extra))
   elem.extend(
     [
       to_element(item, keep_extra=keep_extra)
-      for item in itertools.chain(tu.notes, tu.props, tu.tuvs)
+      for item in chain(tu.notes, tu.props, tu.tuvs)
     ]
   )
   return elem
 
 
-def _tmx_to_element(tmx: Tmx, /, keep_extra: bool = False) -> _Element:
-  elem = Element("tmx", version="1.4")
-  body = Element("body")
+@overload
+def _tmx_to_element(
+  tmx: Tmx, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _tmx_to_element(
+  tmx: Tmx, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _tmx_to_element(
+  tmx: Tmx, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("tmx", version="1.4")
   elem.append(_header_to_element(tmx.header, keep_extra=keep_extra))
-  elem.append(body)
+  body = E("body")
+  elem.append(body)  # type: ignore
   body.extend([to_element(item, keep_extra=keep_extra) for item in tmx.tus])
   return elem
 
 
-def _ph_to_element(ph: Ph, /, keep_extra: bool = False) -> _Element:
-  elem = Element("ph")
-  elem.attrib.update(_make_attrib_dict(ph, keep_extra=keep_extra))
+@overload
+def _ph_to_element(
+  ph: Ph, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _ph_to_element(
+  ph: Ph, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _ph_to_element(
+  ph: Ph, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("ph", attrib=_make_attrib_dict(ph, keep_extra=keep_extra))
   _fill_inline_content(ph.content, elem, keep_extra=keep_extra)
   return elem
 
 
-def _bpt_to_element(bpt: Bpt, /, keep_extra: bool = False) -> _Element:
-  elem = Element("bpt")
-  elem.attrib.update(_make_attrib_dict(bpt, keep_extra=keep_extra))
+@overload
+def _bpt_to_element(
+  bpt: Bpt, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _bpt_to_element(
+  bpt: Bpt, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _bpt_to_element(
+  bpt: Bpt, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("bpt", attrib=_make_attrib_dict(bpt, keep_extra=keep_extra))
   _fill_inline_content(bpt.content, elem, keep_extra=keep_extra)
   return elem
 
 
-def _ept_to_element(ept: Ept, /, keep_extra: bool = False) -> _Element:
-  elem = Element("ept")
-  elem.attrib.update(_make_attrib_dict(ept, keep_extra=keep_extra))
+@overload
+def _ept_to_element(
+  ept: Ept, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _ept_to_element(
+  ept: Ept, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _ept_to_element(
+  ept: Ept, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("ept", attrib=_make_attrib_dict(ept, keep_extra=keep_extra))
   _fill_inline_content(ept.content, elem, keep_extra=keep_extra)
   return elem
 
 
-def _it_to_element(it: It, /, keep_extra: bool = False) -> _Element:
-  elem = Element("it")
-  elem.attrib.update(_make_attrib_dict(it, keep_extra=keep_extra))
+@overload
+def _it_to_element(
+  it: It, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _it_to_element(
+  it: It, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _it_to_element(
+  it: It, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("it", attrib=_make_attrib_dict(it, keep_extra=keep_extra))
   _fill_inline_content(it.content, elem, keep_extra=keep_extra)
   return elem
 
 
-def _ut_to_element(ut: Ut, /, keep_extra: bool = False) -> _Element:
-  elem = Element("ut")
-  elem.attrib.update(_make_attrib_dict(ut, keep_extra=keep_extra))
+@overload
+def _ut_to_element(
+  ut: Ut, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _ut_to_element(
+  ut: Ut, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _ut_to_element(
+  ut: Ut, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("ut", attrib=_make_attrib_dict(ut, keep_extra=keep_extra))
   _fill_inline_content(ut.content, elem, keep_extra=keep_extra)
   return elem
 
 
-def _sub_to_element(sub: Sub, /, keep_extra: bool = False) -> _Element:
-  elem = Element("sub")
-  elem.attrib.update(_make_attrib_dict(sub, keep_extra=keep_extra))
+@overload
+def _sub_to_element(
+  sub: Sub, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _sub_to_element(
+  sub: Sub, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _sub_to_element(
+  sub: Sub, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("sub", attrib=_make_attrib_dict(sub, keep_extra=keep_extra))
   _fill_inline_content(sub.content, elem, keep_extra=keep_extra)
   return elem
 
 
-def _hi_to_element(hi: Hi, /, keep_extra: bool = False) -> _Element:
-  elem = Element("hi")
-  elem.attrib.update(_make_attrib_dict(hi, keep_extra=keep_extra))
+@overload
+def _hi_to_element(
+  hi: Hi, /, keep_extra: bool, lxml: Literal[True]
+) -> lxet._Element: ...
+@overload
+def _hi_to_element(
+  hi: Hi, /, keep_extra: bool, lxml: Literal[False]
+) -> pyet.Element: ...
+def _hi_to_element(
+  hi: Hi, /, keep_extra: bool, lxml: bool
+) -> lxet._Element | pyet.Element:
+  E = lxet.Element if lxml else pyet.Element
+  elem = E("hi", attrib=_make_attrib_dict(hi, keep_extra=keep_extra))
   _fill_inline_content(hi.content, elem, keep_extra=keep_extra)
   return elem
 
 
+@overload
 def to_element(
-  element: TmxElement, /, keep_extra: bool = False, validate_element: bool = True
-) -> _Element:
+  element: TmxElement,
+  lxml: Literal[True],
+  /,
+  keep_extra: bool = False,
+  validate_element: bool = True,
+) -> lxet._Element: ...
+@overload
+def to_element(
+  element: TmxElement,
+  lxml: Literal[False],
+  /,
+  keep_extra: bool = False,
+  validate_element: bool = True,
+) -> pyet.Element: ...
+def to_element(
+  element: TmxElement,
+  lxml: bool,
+  /,
+  keep_extra: bool = False,
+  validate_element: bool = True,
+) -> lxet._Element | pyet.Element:
   """
   Converts a TmxElement to an :external:class:`lxml.etree._Element` object.
 
@@ -478,40 +664,42 @@ def to_element(
     validate(element)
   match element:
     case Map():
-      return _map_to_element(element, keep_extra=keep_extra)
+      return _map_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Ude():
-      return _ude_to_element(element, keep_extra=keep_extra)
+      return _ude_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Note():
-      return _note_to_element(element, keep_extra=keep_extra)
+      return _note_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Prop():
-      return _prop_to_element(element, keep_extra=keep_extra)
+      return _prop_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Header():
-      return _header_to_element(element, keep_extra=keep_extra)
+      return _header_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Tuv():
-      return _tuv_to_element(element, keep_extra=keep_extra)
+      return _tuv_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Tu():
-      return _tu_to_element(element, keep_extra=keep_extra)
+      return _tu_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Tmx():
-      return _tmx_to_element(element, keep_extra=keep_extra)
+      return _tmx_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Ph():
-      return _ph_to_element(element, keep_extra=keep_extra)
+      return _ph_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Bpt():
-      return _bpt_to_element(element, keep_extra=keep_extra)
+      return _bpt_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Ept():
-      return _ept_to_element(element, keep_extra=keep_extra)
+      return _ept_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case It():
-      return _it_to_element(element, keep_extra=keep_extra)
+      return _it_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Ut():
-      return _ut_to_element(element, keep_extra=keep_extra)
+      return _ut_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Sub():
-      return _sub_to_element(element, keep_extra=keep_extra)
+      return _sub_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case Hi():
-      return _hi_to_element(element, keep_extra=keep_extra)
+      return _hi_to_element(element, keep_extra=keep_extra, lxml=lxml)
     case _:
       raise TypeError(f"Unknown element {element}")
 
 
-def from_element(element: _Element, /, keep_extra: bool = False) -> TmxElement:
+def from_element(
+  element: lxet._Element | pyet.Element, /, keep_extra: bool = False
+) -> TmxElement:
   """
   Converts an :external:class:`lxml.etree._Element` object to a TmxElement.
 
@@ -598,6 +786,17 @@ def _validate_map(map_: Map) -> None:
       raise ValueError(f"subst should be ASCII but found {map_.subst!r}")
 
 
+def _validate_balanced_paired_tags(content: Iterable) -> None:
+  bpt_count = Counter(bpt.i for bpt in content if isinstance(bpt, Bpt))
+  ept_count = Counter(ept.i for ept in content if isinstance(ept, Ept))
+  if len(bpt_count) != len(ept_count):
+    raise ValueError("Number of Bpt and Ept tags must be equal")
+  if bpt_count.most_common(1)[0][1] > 1:
+    raise ValueError("Bpt indexes must be unique")
+  if ept_count.most_common(1)[0][1] > 1:
+    raise ValueError("Ept indexes must be unique")
+
+
 @cache
 def get_cached_type_hints(clazz: Type[Any]) -> dict[str, Type[Any]]:
   return get_type_hints(clazz)
@@ -606,12 +805,25 @@ def get_cached_type_hints(clazz: Type[Any]) -> dict[str, Type[Any]]:
 def validate(obj: TmxElement) -> None:
   """
   Validates that the TmxElement is valid and ready for export.
+
+  Parameters
+  ----------
+  obj : TmxElement
+      The TmxElement to convert
+
+  Raises
+  ------
+  TypeError
+      If a value or the object is not of its expected type
+  ValueError
+      If an attribute is missing
   """
   if not isinstance(obj, TmxElement):
     raise TypeError(f"Expected a TmxElement but got {type(obj)}")
   for field in fields(obj):
     # Ignore extra as these don't follow the spec so users should be the ones
-    # validating them
+    # validating them, we're letting lxml do the validation for us instead on
+    # file/string export
     if field.name == "extra":
       continue
     value, hints = getattr(obj, field.name), get_cached_type_hints(obj.__class__)  # type: ignore
@@ -632,3 +844,5 @@ def validate(obj: TmxElement) -> None:
             )
   if isinstance(obj, Map):
     _validate_map(obj)
+  elif isinstance(obj, Tuv):
+    _validate_balanced_paired_tags(obj.content)
