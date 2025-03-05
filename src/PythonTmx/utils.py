@@ -626,39 +626,47 @@ def to_element(
 ) -> pyet.Element: ...
 def to_element(
   element: TmxElement,
-  lxml: Literal[True] | Literal[False],
+  lxml: Literal[True] | Literal[False] = True,
   /,
   keep_extra: bool = False,
   validate_element: bool = True,
 ) -> lxet._Element | pyet.Element:
   """
-  Converts a TmxElement to an :external:class:`lxml.etree._Element` object.
+  Converts a TmxElement to an lxml or ElementTree element.
 
-  If `keep_extra` is True, the extra attributes of the element and its children
+  If `lxml` is True, the output will be an lxml element, otherwise it will be an
+  ElementTree element.
+
+  If `keep_extra` is True, the extra attributes of the element (and its children)
   will be included in the output.
 
-  if `validate_element` is True, the element will be validated before being converted.
-
+  .. warning::
+    Even if `validate_element` is True, the `extra` dict will NOT be validated.
+    As this is NOT part of the TMX spec, it is the responsibility of the user to
+    ensure that the `extra` dict is a valid mapping of strings to strings.
 
   Parameters
   ----------
   element : TmxElement
-      The TmxElement to convert.
+      The TmxElement to convert
+  lxml : Literal[True] | Literal[False]
+      Whether to use lxml or ElementTree, by default True
   keep_extra : bool, optional
-      Whether to keep the extra attributes of the element and its children.
-      The default is False.
+      Whether to include extra attributes present in the element (and its children),
+      by default False
   validate_element : bool, optional
-      Whether to validate the element before converting it. The default is True.
+      Whether to validate the element before converting it (and its children),
+      by default True
 
   Returns
   -------
-  _Element
-      An :external:class:`lxml.etree._Element` object representing the TmxElement.
+  lxet._Element | pyet.Element
+      An lxml or ElementTree element representing the TmxElement
 
   Raises
   ------
   TypeError
-      If the element is not a valid TmxElement.
+      If the TmxElement is not recognized
   """
   if validate_element:
     validate(element)
@@ -701,28 +709,25 @@ def from_element(
   element: lxet._Element | pyet.Element, /, keep_extra: bool = False
 ) -> TmxElement:
   """
-  Converts an :external:class:`lxml.etree._Element` object to a TmxElement.
-
-  If `keep_extra` is True, the extra attributes of the element and its children
-  will be included in the output.
+  Converts an lxml or ElementTree element to a TmxElement object.
 
   Parameters
   ----------
-  element : _Element
-      An :external:class:`lxml.etree._Element` object representing the TmxElement.
+  element : lxet._Element | pyet.Element
+      The element to convert
   keep_extra : bool, optional
-      Whether to keep the extra attributes of the element and its children.
-      The default is False.
+      Whether to keep extra attributes present in the element (and its children),
+      by default False
 
   Returns
   -------
   TmxElement
-      A TmxElement representing the :external:class:`lxml.etree._Element` object.
+      An instance of the appropriate TmxElement subclass
 
   Raises
   ------
   ValueError
-      If the element is not a valid TmxElement.
+      If the element is not a valid lxml or ElementTree element or the tag is not recognized
   """
   match element.tag:
     case "map":

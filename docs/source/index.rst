@@ -21,16 +21,17 @@ Features
 - **Read TMX Files**: Load and parse existing TMX files to access translation memory data.
 - **Create TMX Files**: Generate new TMX files from scratch.
 - **Edit TMX Files**: Modify existing TMX files by adding, removing, or updating translation units.
-- **Blazing Fast**: Leverage the power of the lxml library for efficient XML parsing and manipulation.
 - **Datetime Support**: Use Python Datetime objects to represent dates and times instead of strings.
 - **Fully Typed**: PythonTmx is fully typed, providing type hints and type checking for all attributes and methods.
-- **Fully Tmx 1.4 level 2 support**: PythonTmx supports all the elements and attributes of TMX 1.4 level 2, letting you build and parse even the most complex files
+- **Fully Tmx 1.4 level 2 compliant**: PythonTmx supports all the elements and attributes of TMX 1.4 level 2, letting you build and parse even the most complex files
+- **Built on top of lxml**: PythonTmx uses the lxml library to parse and generate XML by default.
 
 .. note::
-   While PythonTmx is built on top of and is typed for use with lxml, the
-   :func:`~PythonTmx.utils.from_element` function is compatible with ElementTree
-   objects as well. However, it is at this time not possible to export to
-   ElementTree objects.
+   
+   While PythonTmx is built on top of, and is meant to be used with lxml, it is
+   fully compatible AND typed for use with Python's built-in xml.etree.ElementTree
+   module. Simply set `lxml` to False when using `to_element` and `from_element`
+   to use the native ElementTree module instead.
 
 Installation
 ------------
