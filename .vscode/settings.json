@@ -1,4 +1,9 @@
 {
-    "python.analysis.typeCheckingMode": "off",
-    "python.analysis.autoImportCompletions": true
+  "[python]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "python.analysis.autoImportCompletions": true
 }
