@@ -16,8 +16,6 @@ release = "0.3"
 
 extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "sphinx.ext.intersphinx"]
 
-templates_path = ["_templates"]
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -27,4 +25,3 @@ intersphinx_mapping = {
   "python": ("https://docs.python.org/3", None),
   "lxml": ("https://lxml.de/apidoc/", None),
 }
-autodoc_default_options = {"member-order": "bysource"}
