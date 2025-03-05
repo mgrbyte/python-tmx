@@ -1,11 +1,10 @@
 import xml.etree.ElementTree as pyet
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import MISSING, fields
 from datetime import datetime
-from functools import cache
 from itertools import chain
-from typing import Any, Literal, Type, get_type_hints, overload
+from typing import Literal, get_args, get_origin, get_type_hints, overload
 
 import lxml.etree as lxet
 
@@ -802,9 +801,13 @@ def _validate_balanced_paired_tags(content: Iterable) -> None:
     raise ValueError("Ept indexes must be unique")
 
 
-@cache
-def get_cached_type_hints(clazz: Type[Any]) -> dict[str, Type[Any]]:
-  return get_type_hints(clazz)
+_type_hints_cache = {}
+
+
+def _get_type_hints(cls: type) -> dict[str, type]:
+  if cls not in _type_hints_cache:
+    _type_hints_cache[cls] = get_type_hints(cls)
+  return _type_hints_cache[cls]
 
 
 def validate(obj: TmxElement) -> None:
@@ -823,30 +826,40 @@ def validate(obj: TmxElement) -> None:
   ValueError
       If an attribute is missing
   """
+  if obj is None:
+    raise ValueError("Cannot validate None object")
   if not isinstance(obj, TmxElement):
     raise TypeError(f"Expected a TmxElement but got {type(obj)}")
+  hints = _get_type_hints(obj.__class__)
   for field in fields(obj):
-    # Ignore extra as these don't follow the spec so users should be the ones
-    # validating them, we're letting lxml do the validation for us instead on
-    # file/string export
-    if field.name == "extra":
-      continue
-    value, hints = getattr(obj, field.name), get_cached_type_hints(obj.__class__)  # type: ignore
+    value = getattr(obj, field.name)
     if value is None:
       if field.default is MISSING:
-        raise ValueError(f"missing attribute {field.name}")
-      else:
-        continue
+        raise ValueError(f"Missing attribute {field.name!r}")
+      continue
+    if field.name == "extra":
+      if not isinstance(value, dict):
+        raise TypeError(f"Extra field must be a dict, got {type(value)}")
+      for k, v in value.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+          raise TypeError("Extra dict must contain only string keys and values")
+      continue
+    expected_type = hints[field.name]
+    if get_origin(expected_type) is Sequence:
+      union = get_args(expected_type)[0]
+      args = get_args(union)
+      for item in value:
+        if not isinstance(item, args):
+          raise TypeError(
+            f"Error while validating {obj.__class__.__name__!r} field {field.name!r}: Expected all items in {field.name!r} to be one of {union!r} but got {type(item).__name__!r}"
+          )
+        if isinstance(item, InlineElement):
+          validate(item)
     else:
-      try:
-        if not isinstance(value, hints[field.name]):
-          raise TypeError(f"Expected {hints[field.name]} but got {type(value)}")
-      except TypeError:
-        for item in value:
-          if not isinstance(item, hints[field.name].__args__):
-            raise TypeError(
-              f"Expected one of {hints[field.name].__args__} but got {type(item)}"
-            )
+      if not isinstance(value, expected_type):
+        raise TypeError(
+          f"Error while validating {obj.__class__.__name__!r} field {field.name!r}: Expected {field.name!r} to be of type {expected_type.__name__!r} but got {type(value).__name__!r}"
+        )
   if isinstance(obj, Map):
     _validate_map(obj)
   elif isinstance(obj, Tuv):
