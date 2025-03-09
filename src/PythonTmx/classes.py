@@ -494,7 +494,7 @@ class Header(StructuralElement):
   """
   creationdate: datetime | None = field(
     default=None,
-    metadata={"export_func": lambda x: x.strfmt(format="%Y%m%dT%H%M%SZ")},
+    metadata={"export_func": lambda x: x.strftime(format="%Y%m%dT%H%M%SZ")},
   )
   """
   *Creation Date* - The date the tmx file was created. Optional, by default None.
@@ -509,7 +509,7 @@ class Header(StructuralElement):
   """
   changedate: datetime | None = field(
     default=None,
-    metadata={"export_func": lambda x: x.strfmt(format="%Y%m%dT%H%M%SZ")},
+    metadata={"export_func": lambda x: x.strftime(format="%Y%m%dT%H%M%SZ")},
   )
   """
   *Change Date* - The date the tmx file was last edited. Optional, by default None.
@@ -596,7 +596,7 @@ class Tuv(StructuralElement):
   """
   creationdate: datetime | None = field(
     default=None,
-    metadata={"export_func": lambda x: x.strfmt(format="%Y%m%dT%H%M%SZ")},
+    metadata={"export_func": lambda x: x.strftime(format="%Y%m%dT%H%M%SZ")},
   )
   """
   *Creation Date* - The date the :class:`Tuv` was created. Optional, by default None.
@@ -611,7 +611,7 @@ class Tuv(StructuralElement):
   """
   changedate: datetime | None = field(
     default=None,
-    metadata={"export_func": lambda x: x.strfmt(format="%Y%m%dT%H%M%SZ")},
+    metadata={"export_func": lambda x: x.strftime(format="%Y%m%dT%H%M%SZ")},
   )
   """
   *Change Date* - The date the :class:`Tuv` was last edited. Optional, by default None.
@@ -679,7 +679,7 @@ class Tu(StructuralElement):
   """
   lastusagedate: datetime | None = field(
     default=None,
-    metadata={"export_func": lambda x: x.strfmt(format="%Y%m%dT%H%M%SZ")},
+    metadata={"export_func": lambda x: x.strftime(format="%Y%m%dT%H%M%SZ")},
   )
   """
   *Last Usage Date* - The date the :class:`Tu` was last used in the original
@@ -701,7 +701,7 @@ class Tu(StructuralElement):
   """
   creationdate: datetime | None = field(
     default=None,
-    metadata={"export_func": lambda x: x.strfmt(format="%Y%m%dT%H%M%SZ")},
+    metadata={"export_func": lambda x: x.strftime(format="%Y%m%dT%H%M%SZ")},
   )
   """
   *Creation Date* - The date the :class:`Tu` was created. Optional, by default None.
@@ -716,7 +716,7 @@ class Tu(StructuralElement):
   """
   changedate: datetime | None = field(
     default=None,
-    metadata={"export_func": lambda x: x.strfmt(format="%Y%m%dT%H%M%SZ")},
+    metadata={"export_func": lambda x: x.strftime(format="%Y%m%dT%H%M%SZ")},
   )
   """
   *Change Date* - The date the :class:`Tu` was last edited. Optional, by default None.
