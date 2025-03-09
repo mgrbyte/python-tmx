@@ -698,6 +698,25 @@ def _validate_sequence(value: Sequence[Any], expected_type: type[Any]) -> None:
 
 
 def validate(obj: TmxElement, /, validate_extra: bool = True) -> None:
+  """
+  Validates a TmxElement object and its children recursively to ensure proper
+  typing.
+
+  If `validate_extra` is True, the `extra` dict will be validated to ensure that
+  it only contains string keys and values.
+
+  Parameters
+  ----------
+  obj : TmxElement
+      The TmxElement object to validate
+  validate_extra : bool, optional
+      Whether to validate the `extra` dict, by default True
+
+  Raises
+  ------
+  ValidationError
+      On validation failure
+  """
   stack = [obj]
   while stack:
     current = stack.pop()
