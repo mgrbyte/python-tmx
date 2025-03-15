@@ -19,10 +19,14 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["lxml>=5.1.0", "python-dateutil>=2.9.0"]
+dependencies = [
+  "bs4>=0.0.2",
+  "lxml>=5.1.0",
+  "python-dateutil>=2.9.0",
+]
 
 [project.optional-dependencies]
-dev = ["black", "lxml-stubs>=0.5.1", "ruff", "pytest", "mypy", "requests", "wheel"]
+dev = ["black", "lxml-stubs>=0.5.1", "ruff>=0.5.3", "pytest", "mypy", "requests", "wheel"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -37,5 +41,5 @@ implicit_reexport = false
 no_implicit_optional = true
 
 [project.urls]
-Homepage = "https://github.com/ChonkyYoshi/python-tmx"
-Issues = "https://github.com/ChonkyYoshi/python-tmx/issues"
+Homepage = "https://github.com/mgrbyte/python-tmx"
+Issues = "https://github.com/mgrbyte/python-tmx/issues"
