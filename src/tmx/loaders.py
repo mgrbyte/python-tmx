@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from bs4 import UnicodeDammit
 from lxml import etree
 
 from .constants import XMLLANG_NAMESPACE_ATTR
@@ -203,13 +204,25 @@ def load_tu(tu_elem: etree._Element) -> tu:
     return tu_obj
 
 
+def _detect_encoding(file: Path, fallback: str = "utf-8") -> str:
+    encoding = None
+    with open(file, "rb") as f:
+        dammit = UnicodeDammit(f.read(10))
+        encoding = dammit.original_encoding
+    return encoding if encoding is not None else fallback
+
+
 def load_tmx(file: Path | str) -> tmx:
     """Parse a tmx file using lxml and returns a tmx object"""
+    tmx_file: Path = Path(file)
+    encoding = _detect_encoding(tmx_file, "utf-8")
     tmx_obj = tmx()
     tmx_parser: etree.XMLParser = etree.XMLParser(
-        encoding="utf-8", remove_blank_text=True, resolve_entities=False, recover=True
+        encoding=encoding,
+        remove_blank_text=True,
+        resolve_entities=False,
+        recover=True,
     )
-    tmx_file: Path = Path(file)
     tmx_tree: etree._ElementTree = etree.parse(tmx_file, tmx_parser)
     tmx_root: etree._Element = tmx_tree.getroot()
     tmx_obj.xml_version = tmx_tree.docinfo.xml_version
