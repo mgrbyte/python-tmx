@@ -110,7 +110,7 @@ def load_it(it_elem: etree._Element) -> tuple[it, run]:
     return it_run, tail_run
 
 
-def load_tuv(tuv_elem: etree._Element) -> tuv:
+def load_tuv(tuv_elem: etree._Element) -> tuv | None:
     tuv_obj: tuv = tuv()
     tuv_obj.xmllang = tuv_elem.attrib.get(XMLLANG_NAMESPACE_ATTR)
     for prop_elem in tuv_elem.findall("prop"):
@@ -138,8 +138,9 @@ def load_tuv(tuv_elem: etree._Element) -> tuv:
             else:
                 if attribute in tuv_obj.__slots__:
                     setattr(tuv_obj, attribute, tuv_elem.attrib.get(attribute))
-    seg_elem: etree._Element | None = tuv_elem.find("seg")
-    assert seg_elem is not None
+    if tuv_elem.find("seg") is None:
+        return None
+    seg_elem: etree._Element = tuv_elem.find("seg")
     if seg_elem.text is not None:
         tuv_obj.runs.append(run(text=seg_elem.text))
     part: etree._Element
@@ -200,7 +201,9 @@ def load_tu(tu_elem: etree._Element) -> tu:
                 setattr(tu_obj, attribute, value)
     for tuv_elem in tu_elem.findall("tuv"):
         if tuv_elem.getchildren():
-            tu_obj.tuvs.append(load_tuv(tuv_elem))
+            tuv = load_tuv(tuv_elem)
+            if tuv is not None:
+                tu_obj.tuvs.append(tuv)
     return tu_obj
 
 
